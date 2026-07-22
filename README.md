@@ -68,6 +68,10 @@ The application uses a Distributed Module Federation model powered by Vite 8. Ea
 +-----------------------------------------------------------------------------------+
 ```
 
+### Monorepo File Structure
+
+This workspace is organized as a unified pnpm monorepo utilizing strict workspace symlinking and shared compiler base configurations:
+
 ```text
 lyria-studio/
 ├── .env.local                             # Global environment variables (API keys, ports)
