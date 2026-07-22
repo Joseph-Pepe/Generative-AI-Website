@@ -160,7 +160,7 @@ pnpm clean
 
 **1. Environment Configuration**
 
-Gop into .env.local file in the workspace root (lyria-studio/.env.local) and configure your API credentials:
+Go into .env.local file in the workspace root (lyria-studio/.env.local) and configure your API credentials:
 
 ```text
 GOOGLE_GEMINI_API_KEY=ai-zaSy...your-gemini-lyria-key-here...
