@@ -112,6 +112,50 @@ Google Cloud / AI Studio: An active API key with access to the Gemini Lyria 3 ge
 Browser Runtime: Google Chrome 120+, Microsoft Edge 120+, or Firefox Nightly with WebAudio API, SharedArrayBuffer, and WebGPU/WASM flags enabled for local stem demixing.
 
 ---
+
+## 🛠️ Compilation Commands
+All build and verification tasks can be executed globally from the workspace root or scoped to individual applications using pnpm filters.
+
+**1. Install Workspace Dependencies
+
+Install all physical packages and generate the strict .pnpm virtual symlink store:
+
+```
+pnpm install
+```
+
+(Note: If prompted with ERR_PNPM_IGNORED_BUILDS for native binary packages like @google/genai or protobufjs, authorize them by running pnpm approve-builds).
+
+**2. Global Type Checking
+
+Verify zero TypeScript compilation errors across all micro-frontends, shared contracts, and the backend gateway simultaneously:
+
+```
+pnpm -r exec tsc --noEmit
+```
+
+**3. Build for Production
+Compile all federated modules into optimized, tree-shaked ES bundles and build the Node.js backend:
+
+
+# Build the entire monorepo in parallel
+
+```
+pnpm build
+
+# Or build a specific micro-frontend individually
+pnpm --filter mfe-audio-editor run build
+```
+
+**4. Clean Workspace Cache
+
+Purge all compiled artifacts, Vite bundler caches, and temporary build files:
+
+```
+pnpm clean
+```
+
+---
 <b>Web Application</b>
 ---
 
