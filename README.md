@@ -6,7 +6,7 @@
 [![WebAudio API](https://img.shields.io/badge/Web%20Audio-API-FF6F00?logo=webaudio&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
 [![Module Federation](https://img.shields.io/badge/Module%20Federation-Enabled-blueviolet)](https://module-federation.io/)
 
-**LyriaStudio MFE** is a cutting-edge, micro frontend web application built with **React 19**, **Node.js 24** and **Vite 8.1.5**. It enables users to generate studio-quality music using Google's **Gemini AI (Lyria 3)** model, receive intelligent genre/mood-based generation recommendations, and manipulate audio in real time with an embedded multitrack editor and AI stem demixer.
+**LyriaStudio MFE** is a cutting-edge, micro frontend web application built with **React 19**, **Node.js 24** and **Vite 8**. It enables users to generate studio-quality music using Google's **Gemini AI (Lyria 3)** model, receive intelligent genre/mood-based generation recommendations, and manipulate audio in real time with an embedded multitrack editor and AI stem demixer.
 
 ---
 
