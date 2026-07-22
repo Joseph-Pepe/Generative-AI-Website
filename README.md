@@ -160,19 +160,13 @@ pnpm clean
 
 **1. Environment Configuration**
 
-Create a .env.local file in the workspace root (lyria-studio/.env.local) and configure your gateway and API credentials:
+Gop into .env.local file in the workspace root (lyria-studio/.env.local) and configure your API credentials:
 
 ```text
 GOOGLE_GEMINI_API_KEY=ai-zaSy...your-gemini-lyria-key-here...
 LYRIA_MODEL_VERSION=models/lyria-3-pro-streaming
-
-# Backend Gateway & WebSocket Routing
-VITE_API_GATEWAY_URL=http://localhost:8000
-VITE_WS_GATEWAY_URL=ws://localhost:8000/ws
-
-# Feature Flags & Audio Engine Settings
-VITE_ENABLE_CLIENT_SIDE_DEMIXING=true
-VITE_AUDIO_BUFFER_SIZE=4096
+...
+...
 ```
 
 **2. Start the Development Environment**
