@@ -116,7 +116,7 @@ Browser Runtime: Google Chrome 120+, Microsoft Edge 120+, or Firefox Nightly wit
 ## 🛠️ Compilation Commands
 All build and verification tasks can be executed globally from the workspace root or scoped to individual applications using pnpm filters.
 
-**1. Install Workspace Dependencies
+**1. Install Workspace Dependencies**
 
 Install all physical packages and generate the strict .pnpm virtual symlink store:
 
@@ -126,7 +126,7 @@ pnpm install
 
 (Note: If prompted with ERR_PNPM_IGNORED_BUILDS for native binary packages like @google/genai or protobufjs, authorize them by running pnpm approve-builds).
 
-**2. Global Type Checking
+**2. Global Type Checking**
 
 Verify zero TypeScript compilation errors across all micro-frontends, shared contracts, and the backend gateway simultaneously:
 
@@ -134,7 +134,8 @@ Verify zero TypeScript compilation errors across all micro-frontends, shared con
 pnpm -r exec tsc --noEmit
 ```
 
-**3. Build for Production
+**3. Build for Production**
+
 Compile all federated modules into optimized, tree-shaked ES bundles and build the Node.js backend:
 
 ```
@@ -145,7 +146,7 @@ pnpm build
 pnpm --filter mfe-audio-editor run build
 ```
 
-**4. Clean Workspace Cache
+**4. Clean Workspace Cache**
 
 Purge all compiled artifacts, Vite bundler caches, and temporary build files:
 
