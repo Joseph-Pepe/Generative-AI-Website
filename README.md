@@ -36,7 +36,7 @@
 
 ## 🏗️ Micro Frontend Architecture
 
-This project is architected as an isolated Micro Frontend using **Module Federation**, designed to seamlessly drop into any existing host shell application without dependency conflicts or audio thread blocking.
+The application uses a Distributed Module Federation model powered by Vite 8. Each Micro Frontend can be developed, tested, and deployed independently while sharing zero-copy Web Audio API contexts and synchronization primitives in the browser.
 
 ```text
 +-----------------------------------------------------------------------------------+
