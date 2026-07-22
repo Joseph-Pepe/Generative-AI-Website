@@ -1,3 +1,68 @@
+# 🎵 LyriaStudio MFE — AI Music Generator & Real-Time Demixer
+
+[![React 19](https://img.shields.io/badge/React-19.0.0-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Vite 8.1.5](https://img.shields.io/badge/Vite-8.1.5-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Gemini Lyria 3](https://img.shields.io/badge/Google%20AI-Lyria%203-4285F4?logo=google&logoColor=white)](https://deepmind.google/technologies/lyria/)
+[![WebAudio API](https://img.shields.io/badge/Web%20Audio-API-FF6F00?logo=webaudio&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
+[![Module Federation](https://img.shields.io/badge/Module%20Federation-Enabled-blueviolet)](https://module-federation.io/)
+
+**LyriaStudio MFE** is a cutting-edge, micro frontend web application built with **React 19** and **Vite 8.1.5**. It enables users to generate studio-quality music using Google's **Gemini AI (Lyria 3)** model, receive intelligent genre/mood-based generation recommendations, and manipulate audio in real time with an embedded multitrack editor and AI stem demixer.
+
+---
+
+## ✨ Key Features
+
+1. **🧠 Generative Audio with Google Gemini (Lyria 3)**
+   - Turn simple text prompts into high-fidelity, fully mastered musical tracks.
+   - Support for low-latency streaming audio decoding—listen while the track generates.
+   - Fine-grained parameter control: tempo (BPM), key signature, instrumentation weight, and structural progression.
+
+2. **💡 Personalized Recommendation Engine**
+   - Learns user preferences over time (favorite moods, genres, acoustic profiles).
+   - Smart Prompt Enrichment: Automatically transforms basic ideas into rich, technically descriptive Lyria 3 prompts.
+   - Interactive mood boards and genre preset selector.
+
+3. **🎛️ Real-Time Non-Destructive Audio Editor**
+   - **Multi-track Timeline:** Zoom, slice, trim, and loop audio segments with sample-level precision.
+   - **DSP Effects Rack:** Real-time Web Audio API parametric EQ, algorithmic reverb, tape delay, and multiband compression.
+   - **Automation Curves:** Draw volume and filter automations directly onto the waveform canvas.
+
+4. **🪓 AI Audio Demixing (Stem Separation)**
+   - Separate any generated or imported track into **4 distinct stems**: Vocals, Drums, Bass, and Other Instruments.
+   - Powered by in-browser **ONNX Runtime Web** (WebGPU/WASM accelerated) for zero-latency local processing, with optional cloud inference fallback.
+   - Individual stem control: Mute, Solo, Pan, and Level adjustment.
+
+---
+
+## 🏗️ Micro Frontend Architecture
+
+This project is architected as an isolated Micro Frontend using **Module Federation**, designed to seamlessly drop into any existing host shell application without dependency conflicts or audio thread blocking.
+
+```text
++-----------------------------------------------------------------------+
+|                        HOST WEB APPLICATION                           |
+|  +-----------------------------------------------------------------+  |
+|  |                 LyriaStudio MFE (Module Federation)             |  |
+|  |                                                                 |  |
+|  |  +--------------------+   +----------------------------------+  |  |
+|  |  | Recommendation UI  |   |    Lyria 3 Streaming Client      |  |  |
+|  |  +---------+----------+   +-----------------+----------------+  |  |
+|  |            |                                |                   |  |
+|  |            v                                v                   |  |
+|  |  +--------------------+   +----------------------------------+  |  |
+|  |  | Prompt Enrichment  |-->|  Web Audio Context & Worklets    |  |  |
+|  |  +--------------------+   +-----------------+----------------+  |  |
+|  |                                             |                   |  |
+|  |            +--------------------------------+                   |  |
+|  |            v                                                    |  |
+|  |  +-----------------------------------------------------------+  |  |
+|  |  | Real-Time Multitrack Editor & ONNX / WASM Stem Demixer    |  |  |
+|  |  +-----------------------------------------------------------+  |  |
+|  +-----------------------------------------------------------------+  |
++-----------------------------------------------------------------------+
+
+
+
 ---
 <b>Web Application</b>
 ---
