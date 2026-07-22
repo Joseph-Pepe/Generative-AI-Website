@@ -154,9 +154,15 @@ Purge all compiled artifacts, Vite bundler caches, and temporary build files:
 pnpm clean
 ```
 
-🚀 Running the Application
+---
 
-1. Environment ConfigurationCreate a .env.local file in the workspace root (lyria-studio/.env.local) and configure your gateway and API credentials:Code snippet# Google AI Studio Credentials
+## 🚀 Running the Application
+
+**1. Environment Configuration**
+
+Create a .env.local file in the workspace root (lyria-studio/.env.local) and configure your gateway and API credentials:Code snippet# Google AI Studio Credentials.
+
+```text
 GOOGLE_GEMINI_API_KEY=ai-zaSy...your-gemini-lyria-key-here...
 LYRIA_MODEL_VERSION=models/lyria-3-pro-streaming
 
@@ -167,13 +173,15 @@ VITE_WS_GATEWAY_URL=ws://localhost:8000/ws
 # Feature Flags & Audio Engine Settings
 VITE_ENABLE_CLIENT_SIDE_DEMIXING=true
 VITE_AUDIO_BUFFER_SIZE=4096
+```
 
-
-2. Start the Development Environment
+**2. Start the Development Environment**
 
 Launch the Node.js 24 backend gateway alongside all frontend development servers in parallel. Vite will automatically map the Module Federation boundaries:
 
+```text
 pnpm dev
+```
 
 Once the terminal confirms all services are bound, access the applications via the following local endpoints:
 
