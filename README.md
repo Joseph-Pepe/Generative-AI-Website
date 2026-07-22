@@ -204,6 +204,20 @@ pnpm preview
 ```
 
 ---
+
+## 🚀 How to test and run your Docker container
+
+Run these two commands to build and launch your containerized DAW:
+
+```text
+# 1. Build the Docker image from the root workspace
+docker build -t lyria-studio:latest .
+
+# 2. Run the container and expose port 8000
+docker run -p 8000:8000 --env-file .env.local lyria-studio:latest
+```
+
+---
 <b>Web Application</b>
 ---
 
