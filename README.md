@@ -137,10 +137,8 @@ pnpm -r exec tsc --noEmit
 **3. Build for Production
 Compile all federated modules into optimized, tree-shaked ES bundles and build the Node.js backend:
 
-
-# Build the entire monorepo in parallel
-
 ```
+# Build the entire monorepo in parallel
 pnpm build
 
 # Or build a specific micro-frontend individually
