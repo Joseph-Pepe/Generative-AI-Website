@@ -120,7 +120,7 @@ All build and verification tasks can be executed globally from the workspace roo
 
 Install all physical packages and generate the strict .pnpm virtual symlink store:
 
-```
+```terminal
 pnpm install
 ```
 
@@ -130,7 +130,7 @@ pnpm install
 
 Verify zero TypeScript compilation errors across all micro-frontends, shared contracts, and the backend gateway simultaneously:
 
-```
+```terminal
 pnpm -r exec tsc --noEmit
 ```
 
@@ -138,7 +138,7 @@ pnpm -r exec tsc --noEmit
 
 Compile all federated modules into optimized, tree-shaked ES bundles and build the Node.js backend:
 
-```
+```terminal
 # Build the entire monorepo in parallel
 pnpm build
 
@@ -150,7 +150,7 @@ pnpm --filter mfe-audio-editor run build
 
 Purge all compiled artifacts, Vite bundler caches, and temporary build files:
 
-```
+```terminal
 pnpm clean
 ```
 
