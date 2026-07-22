@@ -6,7 +6,7 @@
 [![WebAudio API](https://img.shields.io/badge/Web%20Audio-API-FF6F00?logo=webaudio&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
 [![Module Federation](https://img.shields.io/badge/Module%20Federation-Enabled-blueviolet)](https://module-federation.io/)
 
-**LyriaStudio MFE** is a cutting-edge, micro frontend web application built with **React 19** and **Vite 8.1.5**. It enables users to generate studio-quality music using Google's **Gemini AI (Lyria 3)** model, receive intelligent genre/mood-based generation recommendations, and manipulate audio in real time with an embedded multitrack editor and AI stem demixer.
+**LyriaStudio MFE** is a cutting-edge, micro frontend web application built with **React 19**, **Node.js 24** and **Vite 8.1.5**. It enables users to generate studio-quality music using Google's **Gemini AI (Lyria 3)** model, receive intelligent genre/mood-based generation recommendations, and manipulate audio in real time with an embedded multitrack editor and AI stem demixer.
 
 ---
 
@@ -39,29 +39,34 @@
 This project is architected as an isolated Micro Frontend using **Module Federation**, designed to seamlessly drop into any existing host shell application without dependency conflicts or audio thread blocking.
 
 ```text
-+-----------------------------------------------------------------------+
-|                        HOST WEB APPLICATION                           |
-|  +-----------------------------------------------------------------+  |
-|  |                 LyriaStudio MFE (Module Federation)             |  |
-|  |                                                                 |  |
-|  |  +--------------------+   +----------------------------------+  |  |
-|  |  | Recommendation UI  |   |    Lyria 3 Streaming Client      |  |  |
-|  |  +---------+----------+   +-----------------+----------------+  |  |
-|  |            |                                |                   |  |
-|  |            v                                v                   |  |
-|  |  +--------------------+   +----------------------------------+  |  |
-|  |  | Prompt Enrichment  |-->|  Web Audio Context & Worklets    |  |  |
-|  |  +--------------------+   +-----------------+----------------+  |  |
-|  |                                             |                   |  |
-|  |            +--------------------------------+                   |  |
-|  |            v                                                    |  |
-|  |  +-----------------------------------------------------------+  |  |
-|  |  | Real-Time Multitrack Editor & ONNX / WASM Stem Demixer    |  |  |
-|  |  +-----------------------------------------------------------+  |  |
-|  +-----------------------------------------------------------------+  |
-+-----------------------------------------------------------------------+
-
-
++-----------------------------------------------------------------------------------+
+|                                  BROWSER RUNTIME                                  |
+|                                                                                   |
+|  +-----------------------------------------------------------------------------+  |
+|  |                           HOST (Container)                                  |  |
+|  |  [Router / Auth / Layout / Shared AudioContext / Event Bus / Global State]  |  |
+|  +-----------------------------------------------------------------------------+  |
+|          |                         |                           |                  |
+|          | Module Federation       | Module Federation         | Shared WebAudio  |
+|          v                         v                           v                  |
+|  +-----------------------+  +-----------------------+  +-----------------------+  |
+|  |     mfe-generator     |  |      mfe-editor       |  |  mfe-recommendations  |  |
+|  |  (AI Prompt & Lyria)  |  |  (DAW / Demix / DAW)  |  | (Mood/Genre Engine)   |  |
+|  +-----------------------+  +-----------------------+  +-----------------------+  |
+|          |                         |                           |                  |
++----------|-------------------------|---------------------------|------------------+
+           | REST / SSE / WebSockets | Audio Streaming / ONNX    | GraphQL / gRPC
+           v                         v                           v
++-----------------------------------------------------------------------------------+
+|                         NODE.JS 24 AUDIO GATEWAY & BFF                            |
+|                                                                                   |
+|  +-------------------+   +--------------------+   +----------------------------+  |
+|  | Gemini Lyria 3    |   | Demixing Engine    |   | Recommendation Vector DB   |  |
+|  | Orchestrator      |   | (Demucs / WASM     |   | (User Interest Profiling   |  |
+|  | (Audio Streaming) |   |  / Worker Threads) |   |  & Prompt Optimization)    |  |
+|  +-------------------+   +--------------------+   +----------------------------+  |
++-----------------------------------------------------------------------------------+
+```
 
 ---
 <b>Web Application</b>
