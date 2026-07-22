@@ -68,6 +68,49 @@ The application uses a Distributed Module Federation model powered by Vite 8. Ea
 +-----------------------------------------------------------------------------------+
 ```
 
+```text
+lyria-studio/
+├── .env.local                             # Global environment variables (API keys, ports)
+├── package.json                           # Root scripts (dev, build, typecheck, clean)
+├── pnpm-workspace.yaml                    # Workspace declarations ('apps/*', 'packages/*', 'services/*')
+├── tsconfig.base.json                     # Shared ESNext/Bundler TypeScript configuration
+│
+├── apps/                                  # Frontend Micro Frontends (Vite 8 + React 19)
+│   ├── host-container/                    # [Port 3000] App Shell & Global Web Audio Provider
+│   │   ├── src/providers/AudioProvider.tsx# Master Web Audio API context hardware unlocker
+│   │   └── vite.config.ts                 # Module Federation Host configuration
+│   ├── mfe-audio-generator/               # [Port 3001] Text-to-Music Prompt Studio & Streamer
+│   │   ├── src/components/GeneratorStudio.tsx # React 19 useActionState form engine
+│   │   └── src/services/lyriaClient.ts    # SSE/WAV binary stream consumer
+│   ├── mfe-audio-editor/                  # [Port 3003] Multi-track DAW & AI Stem Demixer
+│   │   ├── public/worklets/               # Real-time AudioWorklet processors (EQ/Reverb)
+│   │   └── src/components/DemixingWorkstation.tsx # 4-channel stem mixer UI
+│   └── mfe-recommendations/               # [Port 3002] Contextual Genre & Mood Discovery Engine
+│
+├── packages/                              # Shared Internal Libraries (Zero-copy boundaries)
+│   ├── shared-types/                      # TypeScript domain models (GeneratedAudioTrack, Stems)
+│   ├── event-bus/                         # Type-safe CustomEvent pub/sub communication bridge
+│   └── ui-library/                        # Standardized Tailwind CSS audio controls & sliders
+│
+└── services/                              # Backend Microservices
+    └── backend-gateway/                   # [Port 8000] Node.js 24 API Gateway & BFF
+        ├── src/controllers/               # Lyria 3 streaming & HT-Demucs separation logic
+        └── src/server.ts                  # Express + WebSocket real-time HTTP server
+```
+
+---
+
+## 📋 System Prerequisites
+Before setting up the project locally, verify that your development environment meets the strict modern hardware and runtime requirements for real-time web audio processing:
+
+Node.js: v24.0.0 or higher (Required for experimental WebAssembly SIMD optimizations and native fetch streams).
+
+Package Manager: pnpm v10.0.0 or higher (Corepack enabled recommended: corepack enable pnpm).
+
+Google Cloud / AI Studio: An active API key with access to the Gemini Lyria 3 generative audio model (models/lyria-3-pro-streaming).
+
+Browser Runtime: Google Chrome 120+, Microsoft Edge 120+, or Firefox Nightly with WebAudio API, SharedArrayBuffer, and WebGPU/WASM flags enabled for local stem demixing.
+
 ---
 <b>Web Application</b>
 ---
