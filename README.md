@@ -205,7 +205,7 @@ pnpm preview
 
 ---
 
-## 🚀 How to test and run your Docker container
+## 🚀 Test & Run Docker Container
 
 Run these two commands to build and launch your containerized DAW:
 
