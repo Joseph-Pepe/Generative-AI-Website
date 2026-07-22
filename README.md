@@ -105,7 +105,7 @@ app.get('/api/test', (request,response) => {
 
 `Step #1:` Go to google AI Studio to get a key to use for the APIs in your application.
 
-<img width="1920" height="1028" alt="image" src="https://github.com/user-attachments/assets/e5087721-0fee-4724-941f-68f4563d98d1" />
+<img width="1722" height="832" alt="image" src="https://github.com/user-attachments/assets/5d5f41a6-3a81-41c8-984b-422417752ffa" />
 
 `Step #2:` Create an `.env` file in the root folder of your project that contains the API key.
 
