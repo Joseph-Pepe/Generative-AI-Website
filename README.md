@@ -187,6 +187,18 @@ Once the terminal confirms all services are bound, access the applications via t
 | mfe-audio-editor | http://localhost:3003 | Standalone 4-track DAW, stem mixer, and DSP effects rack. | 
 | backend-gateway | http://localhost:8000 | Audio stream transcoding, AI orchestration, and WebSocket server. |
 
+**3. Running Production Previews**
+
+To test the compiled production bundles locally with active Module Federation network routing:
+
+```text
+# Step 1: Ensure all packages are built
+pnpm build
+
+# Step 2: Serve the static production builds
+pnpm preview
+```
+
 ---
 <b>Web Application</b>
 ---
