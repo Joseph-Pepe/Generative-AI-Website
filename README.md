@@ -1,4 +1,4 @@
-# 🎵 LyriaStudio MFE — AI Music Generator & Real-Time Demixer
+# 🎵 LyriaStudio: Enterprise AI Music Generator & Real-Time Audio Demixer
 
 [![React 19](https://img.shields.io/badge/React-19.0.0-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![Vite 8.1.5](https://img.shields.io/badge/Vite-8.1.5-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
