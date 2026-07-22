@@ -154,6 +154,37 @@ Purge all compiled artifacts, Vite bundler caches, and temporary build files:
 pnpm clean
 ```
 
+🚀 Running the Application
+
+1. Environment ConfigurationCreate a .env.local file in the workspace root (lyria-studio/.env.local) and configure your gateway and API credentials:Code snippet# Google AI Studio Credentials
+GOOGLE_GEMINI_API_KEY=ai-zaSy...your-gemini-lyria-key-here...
+LYRIA_MODEL_VERSION=models/lyria-3-pro-streaming
+
+# Backend Gateway & WebSocket Routing
+VITE_API_GATEWAY_URL=http://localhost:8000
+VITE_WS_GATEWAY_URL=ws://localhost:8000/ws
+
+# Feature Flags & Audio Engine Settings
+VITE_ENABLE_CLIENT_SIDE_DEMIXING=true
+VITE_AUDIO_BUFFER_SIZE=4096
+
+
+2. Start the Development Environment
+
+Launch the Node.js 24 backend gateway alongside all frontend development servers in parallel. Vite will automatically map the Module Federation boundaries:
+
+pnpm dev
+
+Once the terminal confirms all services are bound, access the applications via the following local endpoints:
+
+| Service / MFE | Local Address | Role |
+| :-- | :-- | :-- |
+| host-contaier | http://localhost:3000 | Main Entry Point: Open this in your browser to use the full DAW. | 
+| mfe-audio-generator | http://localhost:3001 | Standalone Lyria 3 prompt interface and stream visualizer. |
+| mfe-recommendations | http://localhost:3002 | Standalone genre discovery and prompt enrichment widget. |
+| mfe-audio-editor | http://localhost:3003 | Standalone 4-track DAW, stem mixer, and DSP effects rack. | 
+| backend-gateway | http://localhost:8000 | Audio stream transcoding, AI orchestration, and WebSocket server. |
+
 ---
 <b>Web Application</b>
 ---
