@@ -102,6 +102,12 @@ lyria-studio/
         └── src/server.ts                  # Express + WebSocket real-time HTTP server
 ```
 
+`Network Layer (services/lyriaClient.ts): ` Handles raw HTTP streams, TCP byte boundaries, and .MET custom header parsing without any UI dependencies.
+
+`State Layer (hooks/useLyriaGenerator.ts):` Manages the asynchronous streaming lifecycle, audio blob assembly, and React reactivity.
+
+`Presentation & Integration Layer (components/GeneratorStudio.tsx): ` Provides the visual DAW interface, displays real-time streaming feedback (receivedBytes / 1024 KB), and acts as the bridge to the rest of your monorepo via @lyria-studio/event-bus.
+
 ---
 
 ## 📋 System Prerequisites
