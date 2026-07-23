@@ -243,7 +243,7 @@ GEMINI_API_KEY=actual_api_key
 > npm install express @google/genai dotenv
 ```
 
-`Step #5:` This is the format that the json payload needs to be sent to the Google API for lyria 3 music generation model.
+`Step #4:` This is the format that the json payload needs to be sent to the Google API for lyria 3 music generation model.
 
 ```javascript
 // Call the Gemini API using the Lyria 3 music generation model.
