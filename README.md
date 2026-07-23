@@ -224,26 +224,6 @@ docker run -p 8000:8000 --env-file .env.local lyria-studio:latest
 ```
 
 ---
-<b>Local Setup Guide (Getting Started)</b>
----
-
-`Step 1:` Download <b>node.js</b> on your local machine to run it directly and check the version in command line.
-
-```prompt
-> node --version
-```
-
-`Step #2:` Run npm init to create an environment for an application (creates a package.json file for the application).
-
-<img width="1107" height="639" alt="image" src="https://github.com/user-attachments/assets/82b56266-1af8-42d3-b06d-08e72f46d46a" />
-
-`Step #3:` Create an application, and name it <b>index.js</b> using either a text editor (e.g., notepad) or IDE (e.g., VSCode).
-
-```
-
-<img width="1034" height="234" alt="image" src="https://github.com/user-attachments/assets/67d3fc4c-c471-4ef8-9aed-aa27fa265343" />
-
----
 <b>AI Integration (Google Gemini)</b>
 ---
 
@@ -263,29 +243,11 @@ GEMINI_API_KEY=actual_api_key
 > npm install express @google/genai dotenv
 ```
 
-`Step #4:` import these into your <b>index.js</b> application server.
-
-```javascript
-// [dotenv]: used for managing the Google Gemini API key.
-require('dotenv').config();
-
-// [express]: used for the server.
-const express = require('express');
-
-// --- Generative AI (Google) ---
-
-// [@google/genai]: is Google's official SDK.
-const { GoogleGenAI } = require('@google/genai');
-
-// Initialize the Gemini client using an API key
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-```
-
 `Step #5:` This is the format that the json payload needs to be sent to the Google API for lyria 3 music generation model.
 
 ```javascript
 // Call the Gemini API using the Lyria 3 music generation model.
-const response = await ai.models.generateContent({
+const response = await ai.models.generateContentStream({
 	model: 'lyria-3-clip-preview',  // 'lyria-3-clip-preview' for ~30s clips, 'lyria-3-pro-preview' for ~3min clips.
 	contents: prompt,
 	config: {
@@ -293,5 +255,3 @@ const response = await ai.models.generateContent({
 	},
 });
 ```
-
-
