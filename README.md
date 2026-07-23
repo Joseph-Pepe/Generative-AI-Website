@@ -224,22 +224,6 @@ docker run -p 8000:8000 --env-file .env.local lyria-studio:latest
 ```
 
 ---
-<b>Web Application</b>
----
-
-<b>Scripting Language:</b> JavaScript (Node.js runtime environment)
-
-<b>Web Framework:</b> React (JavaScript), Express (Node.js)
-
----
-
-`Docker Container:` Go to the windows store to download a docker container application to use Node.js.
-
-<img width="1920" height="1031" alt="image" src="https://github.com/user-attachments/assets/3d52df3a-31af-4f50-a4a5-ff86b353c2a2" />
-
-<img width="1916" height="1032" alt="image" src="https://github.com/user-attachments/assets/1c49ddd4-9bf5-4136-b4ba-99f89bcb86d5" />
-
----
 <b>Local Setup Guide (Getting Started)</b>
 ---
 
