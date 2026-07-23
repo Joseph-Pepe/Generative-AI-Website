@@ -2,7 +2,9 @@
 
 [![React 19](https://img.shields.io/badge/React-19.0.0-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![Vite 8.1.5](https://img.shields.io/badge/Vite-8.1.5-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
-[![Gemini Lyria 3](https://img.shields.io/badge/Google%20AI-Lyria%203-4285F4?logo=google&logoColor=white)](https://deepmind.google/technologies/lyria/)
+[![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4.0.0-38BDF8?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Express 5](https://img.shields.io/badge/Express-5.2.1-000000?logo=express&logoColor=white)](https://expressjs.com/)
+[![Google AI Studio](https://img.shields.io/badge/Google%20AI-Lyria%203-4285F4?logo=google&logoColor=white)](https://aistudio.google.com/)
 [![WebAudio API](https://img.shields.io/badge/Web%20Audio-API-FF6F00?logo=webaudio&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
 [![Module Federation](https://img.shields.io/badge/Module%20Federation-Enabled-blueviolet)](https://module-federation.io/)
 
