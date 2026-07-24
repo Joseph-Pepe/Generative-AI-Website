@@ -176,13 +176,13 @@ pnpm dev --force
 
 **1. Environment Configuration**
 
-Go into .env.local file in the workspace root (lyria-studio/.env.local) and configure your API credentials:
+Go into .env.local file in the workspace root (lyria-studio/.env.local) and configure your database and Google API credentials:
 
 ```text
-GOOGLE_GEMINI_API_KEY=ai-zaSy...your-gemini-lyria-key-here...
-LYRIA_MODEL_VERSION=models/lyria-3-pro-streaming
+GOOGLE_GEMINI_API_KEY="Gemini_Lyria_API_Key"
 ...
 ...
+DATABASE_URL="postgresql://db_user:db_password@localhost:5432/database_name"
 ```
 
 **2. Start the Development Environment**
@@ -237,29 +237,21 @@ docker run -p 8000:8000 --env-file .env.local lyria-studio:latest
 
 <img width="1722" height="832" alt="image" src="https://github.com/user-attachments/assets/5d5f41a6-3a81-41c8-984b-422417752ffa" />
 
-`Step #2:` Create an `.env` file in the root folder of your project that contains the API key.
-
-```text
-GEMINI_API_KEY=actual_api_key
-```
-
-`Step #3:` Need to install the required dependencies ['express', '@google/genai', 'dotenv'].
+`Step #2:` Need to install the required dependencies ['express', '@google/genai', 'dotenv'].
 
 ```prompt
 > npm install express @google/genai dotenv
 ```
 
-`Step #4:` This is the format that the json payload needs to be sent to the Google API for lyria 3 music generation model.
+`Step #3:` This is the format that the json payload needs to be sent to the Google API for lyria 3 music generation model.
 
 ```javascript
 // Call the Gemini API using the Lyria 3 music generation model.
 const response = await ai.models.generateContentStream({
-	model: 'lyria-3-clip-preview',  // 'lyria-3-clip-preview' for ~30s clips, 'lyria-3-pro-preview' for ~3min clips.
+	model: 'lyria-3-pro-preview',  // 'lyria-3-clip-preview' for ~30s clips, 'lyria-3-pro-preview' for ~3min clips.
 	contents: prompt,
 	config: {
 		responseModalities: ['AUDIO', 'TEXT'],
 	},
 });
 ```
-
-
