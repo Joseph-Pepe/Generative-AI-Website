@@ -128,7 +128,7 @@ Node.js: v24.0.0 or higher (Required for experimental WebAssembly SIMD optimizat
 
 Package Manager: pnpm v10.0.0 or higher (Corepack enabled recommended: corepack enable pnpm).
 
-Google Cloud / AI Studio: An active API key with access to the Gemini Lyria 3 generative audio model (models/lyria-3-pro-streaming).
+Google Cloud / AI Studio: An active API key with access to the Gemini Lyria 3 generative audio model (models/lyria-3-pro-preview).
 
 Browser Runtime: Google Chrome 120+, Microsoft Edge 120+, or Firefox Nightly with WebAudio API, SharedArrayBuffer, and WebGPU/WASM flags enabled for local stem demixing.
 
