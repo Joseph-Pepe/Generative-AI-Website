@@ -69,7 +69,7 @@ app.use(cors({
 // --- Music Test API Endpoints ---
 // ================================
 
-app.get('/api/v1/test', async (req: Request, res: Response) => {
+app.get('/api/v1/test', async (_req: Request, res: Response) => {
   res.json({
 		success: true,
 		timestamp: new Date().toISOString()
@@ -84,7 +84,7 @@ app.get('/api/v1/test', async (req: Request, res: Response) => {
  * Endpoint: Fetch generation history
  * Returns the 10 most recent tracks
  */
-app.get('/api/v1/generations/history', async (req: Request, res: Response) => {
+app.get('/api/v1/generations/history', async (_req: Request, res: Response) => {
   try {
     const history = await db.query.generations.findMany({
       orderBy: [desc(generations.createdAt)],
@@ -366,13 +366,13 @@ app.use((req: Request, res: Response) => {
 });
 
 // Global error handler
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error('🔥 Unhandled Server Error:', err.stack);
   res.status(500).json({ error: 'Internal Server Error' });
 });
 
-// Define the port the server will run on
-const PORT = process.env.PORT || 8000;
+// Define the port the server will run on (look for BACKEND_PORT first, fallback to 8000)
+const PORT = process.env.BACKEND_PORT || process.env.PORT || 8000;
 
 // Start the server and listen on the specified port
 server.listen(PORT, () => {
