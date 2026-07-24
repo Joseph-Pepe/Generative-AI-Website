@@ -10,6 +10,9 @@
 
 **LyriaStudio** is a next-generation, browser-based **Digital Audio Workstation (DAW)** and AI music production platform built on a **Micro Frontend (MFE) Architecture** using **React 19**, **Node.js 24**, **pnpm 11** and **Vite 8**. Powered by **Google Gemini Lyria 3**, it enables artists, producers, and creators to generate high-fidelity (studio-quality) music from text prompts, receive intelligent genre/mood suggestions, demix audio into multi-track stems in real time, and edit compositions with professional-grade web audio processing.
 
+<img width="1920" height="935" alt="image" src="https://github.com/user-attachments/assets/bf0f69b7-cfa5-4cf1-8dc0-fbb48d91c30f" />
+
+
 ---
 
 ## ✨ Key Features
