@@ -200,7 +200,7 @@ Once the terminal confirms all services are bound, access the applications via t
 
 | Service / MFE | Local Address | Role |
 | :-- | :-- | :-- |
-| host-contaier | http://localhost:3000 | Main Entry Point: Open this in your browser to use the full DAW. | 
+| host-container | http://localhost:3000 | Main Entry Point: Open this in your browser to use the full DAW. | 
 | mfe-audio-generator | http://localhost:3001 | Standalone Lyria 3 prompt interface and stream visualizer. |
 | mfe-recommendations | http://localhost:3002 | Standalone genre discovery and prompt enrichment widget. |
 | mfe-audio-editor | http://localhost:3003 | Standalone 4-track DAW, stem mixer, and DSP effects rack. | 
@@ -211,7 +211,7 @@ Once the terminal confirms all services are bound, access the applications via t
 To test the compiled production bundles locally with active Module Federation network routing:
 
 ```text
-# Step 1: Ensure all packages are built
+# Step 1: Ensure all packages are built and ready to run
 pnpm build
 
 # Step 2: Serve the static production builds
