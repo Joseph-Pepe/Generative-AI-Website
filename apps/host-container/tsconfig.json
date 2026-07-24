@@ -1,0 +1,19 @@
+{
+  "extends": "@tsconfig/node24/tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+
+    /* Override Node.js module system for Vite 8 / Bundlers */
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+
+    /* Add DOM and Web Audio API types */
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    
+    /* Enable React JSX compilation */
+    "jsx": "react-jsx",
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

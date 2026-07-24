@@ -1,0 +1,34 @@
+{
+  "extends": "@tsconfig/node24/tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "../../",
+
+    /* Node.js 24 ECMAScript & Module Resolution */
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+
+    /* Load native Node.js types */
+    "types": ["node"],
+
+    /* Map shared monorepo packages */
+    "paths": {
+      "@lyria-studio/shared-types": ["../../packages/shared-types/src/index.ts"],
+      "@lyria-studio/event-bus": ["../../packages/event-bus/src/index.ts"],
+      "@lyria-studio/*": ["../../packages/*/src"]
+    },
+
+    /* Interoperability */
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+
+    /* Strictness */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": ["src/**/*", "../../packages/*/src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

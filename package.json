@@ -1,0 +1,25 @@
+{
+  "name": "lyria-studio-monorepo",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.15.1",
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "preview": "pnpm -r --parallel run preview",
+    "typecheck": "pnpm -r exec tsc --noEmit",
+    "clean": "pnpm -r exec rm -rf dist .vite node_modules/.cache",
+    "test": "pnpm -r run test"
+  },
+  "keywords": ["ai-music", "gemini-lyria", "micro-frontends", "web-audio", "daw"],
+  "author": "LyriaStudio Engineering Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@tsconfig/node24": "^24.0.0",
+    "typescript": "^7.0.2"
+  }
+}

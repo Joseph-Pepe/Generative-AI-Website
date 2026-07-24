@@ -1,0 +1,40 @@
+{
+  "extends": "@tsconfig/node24/tsconfig.json",
+  "compilerOptions": {
+
+    // rootDir: restricts Typescript's type graph to this single directory folder structure.
+    // Comment it out so that this frontend application can reach across the monorepo workspace and type-check the raw TypeScript source files in packages/shared-types/src/ in real-time.
+    // "outDir": "./dist",
+    // "rootDir": "./src",
+
+    /* Override Node.js module system for Vite 8 / Bundlers */
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+
+    /* Enable React JSX compilation */
+    "jsx": "react-jsx",
+
+    /* Add Vite environment types */
+    "types": ["vite/client"],
+
+    /* Map workspace packages */
+    "paths": {
+      // Map directly to the package's src folder or index file
+      "@lyria-studio/shared-types": ["../../packages/shared-types/src/index.ts"],
+      "@lyria-studio/event-bus": ["../../packages/event-bus/src/index.ts"],
+      "@lyria-studio/*": ["../../packages/*/src"]
+    },
+
+    /* Add DOM and Web Audio API types */
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+
+    /* Linting / Strictness */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

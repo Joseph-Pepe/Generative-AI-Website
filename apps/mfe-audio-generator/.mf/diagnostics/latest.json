@@ -1,0 +1,10 @@
+{
+  "latestErrorEvent": {
+    "code": "TYPE-001",
+    "message": "Failed to generate type declaration. Execute the below cmd to reproduce and fix the error. #TYPE-001\nargs: {\"cmd\":\"\\\"C:\\\\\\\\Program Files\\\\\\\\nodejs\\\\\\\\node.exe\\\" C:\\\\Users\\\\josep\\\\Desktop\\\\lyria-studio\\\\node_modules\\\\.pnpm\\\\typescript@7.0.2\\\\node_modules\\\\typescript\\\\bin\\\\tsc --project C:\\\\Users\\\\josep\\\\Desktop\\\\lyria-studio\\\\apps\\\\mfe-audio-generator\\\\node_modules\\\\.federation\\\\tsconfig.1e9fa08d8988b25bd3df0a8ebecd8a1e.json\"}\nView the docs to see how to solve: https://module-federation.io/guide/troubleshooting/type#type-001",
+    "args": {
+      "cmd": "\"C:\\\\Program Files\\\\nodejs\\\\node.exe\" C:\\Users\\josep\\Desktop\\lyria-studio\\node_modules\\.pnpm\\typescript@7.0.2\\node_modules\\typescript\\bin\\tsc --project C:\\Users\\josep\\Desktop\\lyria-studio\\apps\\mfe-audio-generator\\node_modules\\.federation\\tsconfig.1e9fa08d8988b25bd3df0a8ebecd8a1e.json"
+    },
+    "timestamp": 1784847485759
+  }
+}

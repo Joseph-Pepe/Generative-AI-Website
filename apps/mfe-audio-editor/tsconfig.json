@@ -1,0 +1,36 @@
+{
+  "extends": "@tsconfig/node24/tsconfig.json",
+  "compilerOptions": {
+    /* Override Node.js module system for Vite 8 / Bundlers */
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+
+    /* Enable React JSX compilation */
+    "jsx": "react-jsx",
+
+    /* Add Vite environment types for import.meta.env */
+    "types": ["vite/client"],
+
+    /* Map workspace packages AND the Module Federation remote */
+    "paths": {
+      "@lyria-studio/shared-types": ["../../packages/shared-types/src/index.ts"],
+      "@lyria-studio/event-bus": ["../../packages/event-bus/src/index.ts"],
+      "@lyria-studio/*": ["../../packages/*/src"],
+      
+      /* Map the federated remote directly to the host container's source code! */
+      "host_container/*": ["../host-container/src/*"]
+    },
+
+    /* Add DOM and Web Audio API types */
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+
+    /* Linting / Strictness */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src/**/*", "../../packages/*/src/**/*", "../host-container/src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

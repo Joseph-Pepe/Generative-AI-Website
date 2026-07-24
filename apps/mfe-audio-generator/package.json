@@ -1,0 +1,33 @@
+{
+  "name": "mfe-audio-generator",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite --port 3001",
+    "build": "vite build",
+    "serve": "vite preview",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@module-federation/vite": "^1.19.0",
+    "@originjs/vite-plugin-federation": "^1.4.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tsconfig/node24": "^24.0.4",
+    "@types/react": "19.0.0",
+    "@types/react-dom": "19.0.0",
+    "@vitejs/plugin-react": "^6.0.3",
+    "vite": "8.1.5",
+    "vite-plugin-css-injected-by-js": "^5.0.2"
+  },
+  "dependencies": {
+    "@lyria-studio/event-bus": "workspace:*",
+    "@lyria-studio/shared-types": "workspace:*",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  }
+}
