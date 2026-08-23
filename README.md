@@ -7,6 +7,8 @@
 [![Google AI Studio](https://img.shields.io/badge/Google%20AI-Lyria%203-4285F4?logo=google&logoColor=white)](https://aistudio.google.com/)
 [![WebAudio API](https://img.shields.io/badge/Web%20Audio-API-FF6F00?logo=webaudio&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
 [![Module Federation](https://img.shields.io/badge/Module%20Federation-Enabled-blueviolet)](https://module-federation.io/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)](https://redis.io/)
 
 **LyriaStudio** is a next-generation, browser-based **Digital Audio Workstation (DAW)** and AI music production platform built on a **Micro Frontend (MFE) Architecture** using **React 19**, **Node.js 24**, **pnpm 11** and **Vite 8**. Powered by **Google Gemini Lyria 3**, it enables artists, producers, and creators to generate high-fidelity (studio-quality) music from text prompts, receive intelligent genre/mood suggestions, demix audio into multi-track stems in real time, and edit compositions with professional-grade web audio processing.
 
@@ -70,6 +72,9 @@ The application uses a Distributed Module Federation model powered by Vite 8. Ea
 |  | Orchestrator      |   | (Demucs / WASM     |   | (User Interest Profiling   |  |
 |  | (Audio Streaming) |   |  / Worker Threads) |   |  & Prompt Optimization)    |  |
 |  +-------------------+   +--------------------+   +----------------------------+  |
+|  +-----------------------------------------------------------------------------+  |
+|  |       PostgreSQL (Generations DB)      |    Redis (Distributed Rate Limit)  |  |
+|  +-----------------------------------------------------------------------------+  |
 +-----------------------------------------------------------------------------------+
 ```
 
@@ -104,6 +109,7 @@ lyria-studio/
 └── services/                              # Backend Microservices
     └── backend-gateway/                   # [Port 8000] Node.js 24 API Gateway & BFF
         ├── src/controllers/               # Lyria 3 streaming & HT-Demucs separation logic
+        ├── src/database/                  # Drizzle ORM Postgres schemas and connection logic
         └── src/server.ts                  # Express + WebSocket real-time HTTP server
 ```
 
@@ -128,6 +134,8 @@ Node.js: v24.0.0 or higher (Required for experimental WebAssembly SIMD optimizat
 
 Package Manager: pnpm v10.0.0 or higher (Corepack enabled recommended: corepack enable pnpm).
 
+Databases: A local or cloud instance of **PostgreSQL** (v15+) and a **Redis Cluster** (v7+) running and accessible.
+
 Google Cloud / AI Studio: An active API key with access to the Gemini Lyria 3 generative audio model (models/lyria-3-pro-preview).
 
 Browser Runtime: Google Chrome 120+, Microsoft Edge 120+, or Firefox Nightly with WebAudio API, SharedArrayBuffer, and WebGPU/WASM flags enabled for local stem demixing.
@@ -136,6 +144,14 @@ Browser Runtime: Google Chrome 120+, Microsoft Edge 120+, or Firefox Nightly wit
 
 ## 🛠️ Compilation Commands
 All build and verification tasks can be executed globally from the workspace root or scoped to individual applications using pnpm filters.
+
+**0. Database Migrations**
+
+Push the Drizzle ORM schema to your connected PostgreSQL database before starting the backend:
+
+``terminal
+pnpm --filter backend-gateway run db:push
+``
 
 **1. Install Workspace Dependencies**
 
@@ -185,6 +201,7 @@ Go into .env.local file in the workspace root (lyria-studio/.env.local) and conf
 GOOGLE_GEMINI_API_KEY="Gemini_Lyria_API_Key"
 ...
 ...
+REDIS_URL="redis://localhost:6379"
 DATABASE_URL="postgresql://db_user:db_password@localhost:5432/database_name"
 ```
 

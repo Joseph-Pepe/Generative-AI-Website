@@ -34,7 +34,7 @@
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.6.0",
+    "ioredis": "^5.4.1",
     "pg": "^8.22.0",
     "postgres": "^3.4.9",
     "ws": "^8.21.1"
