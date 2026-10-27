@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLyriaGenerator } from '../hooks/useLyriaGenerator';
 import { eventBus } from '@lyria-studio/event-bus';
+import { createTraceparent } from '@lyria-studio/shared-types';
 
 // 🛠️ Tells Vite to pass the Tailwind compilation engine over the bridge!
 import '../index.css';
 
-// 1. Type definition for PostgreSQL history rows returned by gateway
+// Type definition for PostgreSQL history rows returned by gateway
 interface HistoryItem {
   id: string;
   prompt: string;
@@ -16,30 +17,42 @@ interface HistoryItem {
   created_at?: string; // Drizzle/Postgres fallback
 }
 
+const GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8000';
+
 export default function GeneratorStudio() {
   const [prompt, setPrompt] = useState('');
   const [genre, setGenre] = useState('Synthwave');
   const [mood, setMood] = useState('Energetic');
 
-  // 2. History State Management
+  // History State Management
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
-  // 1. Consume the clean streaming logic from our custom hook
-  const { generateTrack, isGenerating, audioUrl, metadata, receivedBytes } = useLyriaGenerator();
+  // Consume the clean streaming logic from our custom hook
+  const {
+    generateTrack,
+    cancelGeneration,
+    isGenerating,
+    audioUrl,
+    metadata,
+    receivedBytes,
+    error,
+  } = useLyriaGenerator();
 
   // Fast, reusable history fetcher (points to your Express Gateway on Port 8000)
   const fetchHistory = useCallback(async () => {
     try {
       setIsLoadingHistory(true);
       // Note: Make sure this URL matches where your backend gateway is running!
-      const res = await fetch('http://localhost:8000/api/v1/generations/history');
+      const res = await fetch(`${GATEWAY_URL}/api/v1/generations/history`, {
+        headers: { traceparent: createTraceparent() },
+      });
       if (res.ok) {
-        const data = await res.json();
+        const data = (await res.json()) as HistoryItem[];
         setHistory(data);
       }
-    } catch (error) {
-      console.error('⚠️ Could not fetch generation history:', error);
+    } catch (err) {
+      console.error('⚠️ Could not fetch generation history:', err);
     } finally {
       setIsLoadingHistory(false);
     }
@@ -47,13 +60,23 @@ export default function GeneratorStudio() {
 
   // Load history on component mount
   useEffect(() => {
-    fetchHistory();
+    void fetchHistory();
   }, [fetchHistory]);
+
+  // Listen for prompt enrichments from the Recommendations MFE
+  useEffect(() => {
+    const unsubscribe = eventBus.on('RECOMMENDATION:APPLY_PROMPT', (payload) => {
+      setPrompt(payload.prompt);
+      if (payload.genre) setGenre(payload.genre);
+      if (payload.mood) setMood(payload.mood);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prompt) return;
-    
+    if (!prompt.trim()) return;
+
     // Notify the rest of the DAW monorepo that generation has started
     eventBus.emit('LYRIA:GENERATION_STARTED', { prompt, estimatedTime: 15 });
 
@@ -66,15 +89,15 @@ export default function GeneratorStudio() {
     });
 
     // ⚡ React 19 Polish: Instantly refresh the history list once generation finishes!
-    fetchHistory();
+    void fetchHistory();
   };
 
   // Send the completed track across the Module Federation boundary to the DAW Editor
   const handleOpenInEditor = () => {
     if (metadata && audioUrl) {
-      eventBus.emit('AUDIO:LOAD_INTO_EDITOR', { 
-        track: { ...metadata, audioUrl }, 
-        autoDemix: true 
+      eventBus.emit('AUDIO:LOAD_INTO_EDITOR', {
+        track: { ...metadata, audioUrl },
+        autoDemix: true,
       });
     }
   };
@@ -92,9 +115,15 @@ export default function GeneratorStudio() {
         🎵 Gemini Lyria 3 Studio
       </h2>
 
+      {error && (
+        <div className="mb-4 p-3 rounded-lg bg-rose-950/60 border border-rose-500/50 text-rose-200 text-xs flex items-center justify-between">
+          <span>⚠️ {error}</span>
+        </div>
+      )}
+
       <form onSubmit={handleGenerate} className="space-y-4">
-        {/* Text Prompt Input */}
         <div>
+          {/* Text Prompt Input */}
           <label className="block text-sm font-medium text-slate-300 mb-1">Text Prompt</label>
           <textarea
             value={prompt}
@@ -109,9 +138,9 @@ export default function GeneratorStudio() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">Genre</label>
-            <select 
-              value={genre} 
-              onChange={(e) => setGenre(e.target.value)} 
+            <select
+              value={genre}
+              onChange={(e) => setGenre(e.target.value)}
               className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white"
             >
               <option value="Synthwave">Synthwave / Cyberpunk</option>
@@ -122,9 +151,9 @@ export default function GeneratorStudio() {
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">Mood</label>
-            <select 
-              value={mood} 
-              onChange={(e) => setMood(e.target.value)} 
+            <select
+              value={mood}
+              onChange={(e) => setMood(e.target.value)}
               className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white"
             >
               <option value="Energetic">Energetic & Driving</option>
@@ -135,14 +164,28 @@ export default function GeneratorStudio() {
           </div>
         </div>
 
-        {/* Generate Button with Real-Time Byte Counter */}
-        <button
-          type="submit"
-          disabled={isGenerating || !prompt}
-          className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 font-semibold rounded-lg shadow-lg transition-all disabled:opacity-50"
-        >
-          {isGenerating ? `⚡ Streaming... (${(receivedBytes / 1024).toFixed(1)} KB)` : '🎹 Generate Track'}
-        </button>
+        <div className="flex gap-2">
+          {/* Generate Button with Real-Time Byte Counter */}
+          <button
+            type="submit"
+            disabled={isGenerating || !prompt.trim()}
+            className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 font-semibold rounded-lg shadow-lg transition-all disabled:opacity-50"
+          >
+            {isGenerating
+              ? `⚡ Streaming... (${(receivedBytes / 1024).toFixed(1)} KB)`
+              : '🎹 Generate Track'}
+          </button>
+
+          {isGenerating && (
+            <button
+              type="button"
+              onClick={cancelGeneration}
+              className="px-4 py-3 bg-rose-600 hover:bg-rose-500 font-semibold rounded-lg shadow-lg transition-all"
+            >
+              🛑 Stop
+            </button>
+          )}
+        </div>
       </form>
 
       {/* Audio Player & Cross-MFE Export */}
@@ -150,9 +193,14 @@ export default function GeneratorStudio() {
         <div className="mt-6 p-4 bg-slate-800/50 rounded-lg border border-purple-500/30">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h4 className="font-semibold text-purple-300">✅ Track Ready: {metadata?.title || 'Generated Audio'}</h4>
-              <p className="text-xs text-slate-400">
+              <h4 className="font-semibold text-purple-300">
+                ✅ Track Ready: {metadata?.title || 'Generated Audio'}
+              </h4>
+              {/* <p className="text-xs text-slate-400">
                 {metadata?.genre} • {metadata?.mood} • {metadata?.bpm || 120} BPM
+              </p> */}
+              <p className="text-xs text-slate-400">
+                {metadata?.genre} &bull; {metadata?.mood} &bull; {metadata?.bpm || 120} BPM
               </p>
             </div>
             <button
@@ -171,10 +219,12 @@ export default function GeneratorStudio() {
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
             <span>📜 Recent Prompts</span>
-            {isLoadingHistory && <span className="text-xs text-purple-400 animate-pulse">(Syncing...)</span>}
+            {isLoadingHistory && (
+              <span className="text-xs text-purple-400 animate-pulse">(Syncing...)</span>
+            )}
           </h3>
-          <button 
-            onClick={fetchHistory}
+          <button
+            onClick={() => void fetchHistory()}
             className="text-xs text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
             title="Refresh history"
           >
@@ -199,10 +249,20 @@ export default function GeneratorStudio() {
                     "{item.prompt}"
                   </p>
                   <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500">
-                    <span className="bg-slate-700/50 px-1.5 py-0.5 rounded text-slate-400">{item.genre}</span>
-                    <span className="bg-slate-700/50 px-1.5 py-0.5 rounded text-slate-400">{item.mood}</span>
+                    <span className="bg-slate-700/50 px-1.5 py-0.5 rounded text-slate-400">
+                      {item.genre}
+                    </span>
+                    <span className="bg-slate-700/50 px-1.5 py-0.5 rounded text-slate-400">
+                      {item.mood}
+                    </span>
                     {item.created_at || item.createdAt ? (
-                      <span>• {new Date(item.created_at || item.createdAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      <span>
+                        •{' '}
+                        {new Date(item.created_at || item.createdAt!).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
                     ) : null}
                   </div>
                 </div>

@@ -19,25 +19,22 @@
 
 ## ✨ Key Features
 
-1. **🧠 Generative Audio with Google Gemini (Lyria 3)**
-   - Turn simple text prompts into high-fidelity, fully mastered musical tracks.
-   - Support for low-latency streaming audio decoding—listen while the track generates.
-   - Fine-grained parameter control: tempo (BPM), key signature, instrumentation weight, and structural progression.
+1. **🧠 Generative Audio with Google Gemini (Lyria 3) (`apps/mfe-audio-generator`)**
+   - Turn text prompts into studio-quality musical tracks with real-time chunked binary streaming (`ReadableStreamDefaultReader`) and split-packet `.MET` trailer assembly.
+   - **Abortable Streams & Zero-Leak Memory Lifecycle:** Supports instant in-flight stream cancellation via `AbortController` (`🛑 Stop`) and automatically revokes prior Blob URLs (`URL.revokeObjectURL()`) on regeneration and unmount to prevent 35MB+ WAV buffer leaks.
+  - **End-to-End W3C Tracing & RFC 9457 Parsing:** Generates cryptographic W3C `traceparent` headers (`createTraceparent()`) in the browser and parses backend **RFC 9457 `ProblemDetail`** errors and `Retry-After` quotas.
 
-2. **💡 Personalized Recommendation Engine**
+2. **💡 Personalized Recommendation Engine (`apps/mfe-recommendations`)**
    - Learns user preferences over time (favorite moods, genres, acoustic profiles).
-   - Smart Prompt Enrichment: Automatically transforms basic ideas into rich, technically descriptive Lyria 3 prompts.
-   - Interactive mood boards and genre preset selector.
+  - **Cross-MFE Prompt Enrichment:** Broadcasts `RECOMMENDATION:APPLY_PROMPT` events across the `globalThis` EventBus to populate `GeneratorStudio` without prop-drilling or tight coupling.
 
-3. **🎛️ Real-Time Non-Destructive Audio Editor**
-   - **Multi-track Timeline:** Zoom, slice, trim, and loop audio segments with sample-level precision.
-   - **DSP Effects Rack:** Real-time Web Audio API parametric EQ, algorithmic reverb, tape delay, and multiband compression.
-   - **Automation Curves:** Draw volume and filter automations directly onto the waveform canvas.
-
-4. **🪓 AI Audio Demixing (Stem Separation)**
-   - Separate any generated or imported track into **4 distinct stems**: Vocals, Drums, Bass, and Other Instruments.
-   - Powered by in-browser **ONNX Runtime Web** (WebGPU/WASM accelerated) for zero-latency local processing, with optional cloud inference fallback.
-   - Individual stem control: Mute, Solo, Pan, and Level adjustment.
+3. **🎛️ Real-Time Non-Destructive Audio Editor & Master Limiter (`apps/host-container` + `apps/mfe-audio-editor`)**
+   - **Hardware Master Brickwall Limiter (`AudioProvider.tsx`):** Initializes a shared 48kHz interactive `AudioContext` routed through a master `DynamicsCompressorNode` (`-1.0dB` threshold, `20:1` ratio, `3ms` attack) to prevent digital clipping when summing multiple stems.
+   - **Offline Master WAV Export (`OfflineAudioContext`):** Renders non-realtime master mixes respecting active Mute, Solo, Gain, and Stereo Pan states into a downloadable 44-byte RIFF/WAVE 16-bit PCM `.wav` file.
+4. **🪓 AI Audio Demixing & DAW Mixer Matrix (`DemixingWorkstation.tsx` + `AudioEngine.ts`)**
+   - Separates generated or imported tracks into 4 stems (**Vocals**, **Drums**, **Bass**, and **Other Instruments**) with automatic Web Audio node graph teardown on track reload.
+  - **Full DAW Mute/Solo Matrix:** Real-time exponential gain smoothing (`setTargetAtTime`) with true Solo isolation (soloing one or more stems automatically silences non-soloed channels) and Stereo Panner (`StereoPannerNode`) control.
+  - Powered by in-browser **ONNX Runtime Web** (WebGPU/WASM accelerated) for zero-latency local processing, with optional cloud inference fallback.
 
 5. 🛡️ Enterprise Node.js 24 Gateway, Circuit-Broken Rate Limiting & RFC 9457 Resiliency (`services/backend-gateway`)
   - **Two-Tier Rate Limiter (Valkey 8 Lua Primary + Circuit-Broken Local Fallback):** Executes an atomic sliding-window Lua script via cached `EVALSHA` and millisecond-precise `PEXPIRE` with a `250ms` fail-fast `commandTimeout` and `enableOfflineQueue: false`. If Valkey/Redis fails `5` consecutive times, an in-memory Circuit Breaker opens for `15s`, bypassing dead sockets in `~0.05ms` and enforcing a bounded local sliding window (capped at `10,000` users to prevent `OutOfMemory` leaks) while emitting `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `Retry-After` headers.
@@ -53,18 +50,22 @@ The application uses a Distributed Module Federation model powered by Vite 8. Ea
 
 ```text
 +-----------------------------------------------------------------------------------+
-|                                  BROWSER RUNTIME                                  |
+|                     BROWSER RUNTIME (React 19.2 • Vite 8 MFE)                     |
 |                                                                                   |
 |  +-----------------------------------------------------------------------------+  |
-|  |                           HOST (Container)                                  |  |
-|  |  [Router / Auth / Layout / Shared AudioContext / Event Bus / Global State]  |  |
+|  |                        HOST CONTAINER (Port 3000)                           |  |
+|  |  • Shared 48kHz AudioProvider + Master Brickwall Limiter (-1.0dB / 20:1)    |  |
+|  |  • MfeErrorBoundary (Fault Isolation & Retry) + React.lazy Suspense         |  |
+|  |  • globalThis Singleton EventBus (Object.freeze Zero-Copy CustomEvents)     |  |
 |  +-----------------------------------------------------------------------------+  |
 |          |                         |                           |                  |
 |          | Module Federation       | Module Federation         | Shared WebAudio  |
 |          v                         v                           v                  |
 |  +-----------------------+  +-----------------------+  +-----------------------+  |
-|  |     mfe-generator     |  |      mfe-editor       |  |  mfe-recommendations  |  |
-|  |  (AI Prompt & Lyria)  |  |  (DAW / Demix / DAW)  |  | (Mood/Genre Engine)   |  |
+|  | mfe-audio-generator   |  |   mfe-audio-editor    |  |  mfe-recommendations  |  |
+|  | • Abortable Streamer  |  | • Mute/Solo/Pan Matrix|  | • Mood/Genre Presets  |  |
+|  | • W3C traceparent     |  | • Offline WAV Exporter|  | • Prompt Enrichment   |  |
+|  | • Zero-Leak Blob URLs |  | • WebAudio Node GC    |  |   Event Emitter       |  |
 |  +-----------------------+  +-----------------------+  +-----------------------+  |
 |          |                         |                           |                  |
 +----------|-------------------------|---------------------------|------------------+
@@ -125,17 +126,21 @@ lyria-studio/
         └── src/server.ts                  # Express + WebSocket real-time HTTP server
 ```
 
-`Network Layer (services/lyriaClient.ts): ` 
+**Shared Contracts & Zero-Copy Event Bus (`packages/shared-types` & `packages/event-bus`):**
 
-Handles raw HTTP streams, TCP byte boundaries, and .MET custom header parsing without any UI dependencies.
+Anchors a single `GlobalEventBus` instance onto `globalThis.__LYRIA_STUDIO_EVENT_BUS__` so all federated remotes share the exact same `EventTarget`, freezing payloads with `Object.freeze()` to prevent cross-MFE mutation. Exports `ProblemDetail` (RFC 9457) and `createTraceparent()` (Web Crypto W3C trace generator).
 
-`State Layer (hooks/useLyriaGenerator.ts):` 
+**Network Application Layer (`apps/mfe-audio-generator/src/services/lyriaClient.ts`):**
 
-Manages the asynchronous streaming lifecycle, audio blob assembly, and React reactivity.
+Handles chunked binary HTTP streams, split-packet `.MET` magic-byte (`0x7f 0x4d 0x45 0x54`) boundary detection, `AbortSignal` stream cancellation, W3C `traceparent` header injection, `reader.releaseLock()` cleanup, and RFC 9457 `ProblemDetail` + `Retry-After` error extraction.
 
-`Presentation & Integration Layer (components/GeneratorStudio.tsx): ` 
+**State & Memory Lifecycle Layer (`apps/mfe-audio-generator/src/hooks/useLyriaGenerator.ts`):**
 
-Provides the visual DAW interface, displays real-time streaming feedback (receivedBytes / 1024 KB), and acts as the bridge to the rest of your monorepo via @lyria-studio/event-bus.
+Manages the asynchronous streaming lifecycle, exposes `cancelGeneration()` via `AbortController`, prevents browser memory leaks by revoking previous Blob URLs (`URL.revokeObjectURL()`) on every new generation and unmount, and broadcasts `LYRIA:GENERATION_COMPLETED`.
+
+**Presentation & Fault Isolated Container Layer (`GeneratorStudio.tsx`, `DemixingWorkstation.tsx`, `App.tsx`):**
+
+Wraps remote micro-frontends inside `<MfeErrorBoundary>` with one-click retry recovery, renders live byte-counter streaming feedback and RFC 9457 error banners, listens for `RECOMMENDATION:APPLY_PROMPT` events, and drives the 4-stem DAW mixer with real-time Mute/Solo/Volume controls and 16-bit PCM WAV export.
 
 ---
 

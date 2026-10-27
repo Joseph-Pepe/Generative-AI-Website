@@ -12,11 +12,18 @@ export default defineConfig({
     cors: true, // Allow the Host App on Port 3000 to fetch from this port
   },
   optimizeDeps: {
-    exclude: ['react', 'react-dom', 'react/jsx-runtime', 'react/jsx-dev-runtime', '@lyria-studio/shared-types', '@lyria-studio/event-bus'],
+    exclude: [
+      'react', 
+      'react-dom', 
+      'react/jsx-runtime', 
+      'react/jsx-dev-runtime', 
+      '@lyria-studio/shared-types', 
+      '@lyria-studio/event-bus'
+    ],
   },
   plugins: [
     react(),
-    tailwindcss(), // 2. Add Tailwind plugin
+    tailwindcss(), // Add Tailwind plugin
     cssInjectedByJsPlugin(),
     federation({
       // 1. The unique name of this micro-frontend
@@ -28,8 +35,8 @@ export default defineConfig({
       // 🛠️ Tell Vite to generate the mf-manifest.json file with ESM metadata!
       manifest: true,
 
-      // 🛠️ Type safety that works across all version configurations
-      dts: true,
+      // Disable runtime dts child-process spawning (prevents #TYPE-001 with monorepo paths)
+      dts: false,
       
       // 3. The components/modules you want to share with the Host Container
       exposes: {
@@ -42,8 +49,8 @@ export default defineConfig({
       
       // 4. Shared dependencies so React isn't loaded twice in the browser
       shared: {
-        react: { singleton: true, requiredVersion: '^19.0.0' },
-        'react-dom': { singleton: true, requiredVersion: '^19.0.0' },
+        react: { singleton: true, requiredVersion: '^19.2.8' },
+        'react-dom': { singleton: true, requiredVersion: '^19.2.8' },
         '@lyria-studio/shared-types': { singleton: true },
         '@lyria-studio/event-bus': { singleton: true },
       }
@@ -52,7 +59,7 @@ export default defineConfig({
   build: {
     modulePreload: false,
     target: 'esnext',
-    minify: false,
+    minify: 'esbuild', // enables production build minification.
     cssCodeSplit: false, // 3. Keep this FALSE so all styles bundle into one file for the plugin to inject
   }
 });

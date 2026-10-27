@@ -1,7 +1,7 @@
 {
   "name": "@lyria-studio/shared-types",
   "version": "1.0.0",
-  "description": "Shared TypeScript interfaces and types for Lyria Studio",
+  "description": "Shared TypeScript interfaces, RFC 9457 contracts, and W3C tracing utilities for Lyria Studio",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
@@ -14,11 +14,10 @@
     }
   },
   "scripts": {
+    "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "typescript": "^7.0.2"
   }

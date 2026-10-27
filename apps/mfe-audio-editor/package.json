@@ -1,24 +1,29 @@
 {
   "name": "mfe-audio-editor",
   "version": "1.0.0",
-  "description": "",
+  "description": "Multi-track Web Audio DAW & AI Stem Demixer MFE",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "module",
+  "scripts": {
+    "dev": "vite --port 3003",
+    "build": "vite build",
+    "preview": "vite preview --port 3003",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"No unit tests configured\""
+  },
+  "license": "MIT",
   "devDependencies": {
     "@module-federation/vite": "^1.19.0",
     "@tsconfig/node24": "^24.0.4",
-    "@types/react": "19.0.0",
-    "@types/react-dom": "19.0.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
     "vite": "8.1.5"
   },
   "dependencies": {
-    "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "@lyria-studio/event-bus": "workspace:*",
+    "@lyria-studio/shared-types": "workspace:*",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   }
 }

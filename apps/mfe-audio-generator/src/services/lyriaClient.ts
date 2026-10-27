@@ -1,7 +1,8 @@
-import { GeneratedAudioTrack } from '@lyria-studio/shared-types';
+import { GeneratedAudioTrack, ProblemDetail, createTraceparent } from '@lyria-studio/shared-types';
 
 // This Micro Frontend handles music generation by interfacing with the Google Gemini Lyria 3 API. 
 // It accepts rich natural language prompts, applies structural guidance (tempo, key, instrumentation), and streams real-time audio chunks back to the user.
+
 export interface LyriaGenerationParams {
   prompt: string;
   genre?: string;
@@ -9,68 +10,88 @@ export interface LyriaGenerationParams {
   bpm?: number;
   durationSeconds?: number;
   negativePrompt?: string;
+  useMock?: boolean;
 }
 
 export class Lyria3Client {
-  private gatewayUrl: string;
+  private readonly gatewayUrl: string;
 
   constructor(gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8000') {
     this.gatewayUrl = gatewayUrl;
   }
 
   /**
+   * Streams binary PCM/WAV chunks from the gateway while propagating W3C traceparent headers,
+   * supporting AbortSignal cancellation, and parsing RFC 9457 ProblemDetail error responses.
    * Initiates a real-time audio stream from Gemini Lyria 3.
    * Yields binary audio chunks as they arrive for real-time Web Audio playback,
    * and returns the final GeneratedAudioTrack metadata upon stream completion.
    * Utilizes Server-Sent Events (SSE) or Fetch Streams to receive PCM/WAV chunks as they generate.
    */
-  async *streamMusicGeneration(params: LyriaGenerationParams): AsyncGenerator<Uint8Array, GeneratedAudioTrack, unknown> {
+  async *streamMusicGeneration(
+    params: LyriaGenerationParams,
+    signal?: AbortSignal
+  ): AsyncGenerator<Uint8Array, GeneratedAudioTrack, unknown> {
+    const traceparent = createTraceparent();
+
     const response = await fetch(`${this.gatewayUrl}/api/v1/lyria/generate-stream`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        traceparent,
+      },
       body: JSON.stringify(params),
+      signal,
     });
 
     if (!response.ok || !response.body) {
-      const errorPayload = await response.json().catch(() => ({}));
-      throw new Error(errorPayload.error || `Lyria generation failed: ${response.statusText}`);
+      const errorPayload = (await response.json().catch(() => ({}))) as Partial<ProblemDetail> & {
+        error?: string;
+      };
+      const retryAfter = response.headers.get('Retry-After') || errorPayload.retryAfterSeconds;
+      const detailMessage =
+        errorPayload.detail ||
+        errorPayload.error ||
+        errorPayload.title ||
+        `Lyria generation failed (HTTP ${response.status})`;
+
+      throw new Error(
+        retryAfter ? `${detailMessage} (Retry after ${retryAfter}s)` : detailMessage
+      );
     }
 
     const reader = response.body.getReader();
+    const decoder = new TextDecoder();
     let pendingMetadataBuffer: Uint8Array | null = null;
     let carryOverBuffer: Uint8Array = new Uint8Array(0);
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (!value) continue;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!value) continue;
 
-      // Accumulate metadata if header was already found
-      if (pendingMetadataBuffer) {
-        const merged: Uint8Array = new Uint8Array(pendingMetadataBuffer.length + value.length);
-        merged.set(pendingMetadataBuffer);
-        merged.set(value, pendingMetadataBuffer.length);
-        pendingMetadataBuffer = merged;
-        continue;
-      }
-
-      // Merge leftover bytes from the end of the previous chunk to catch split .MET headers
-      const chunkToProcess = carryOverBuffer.length > 0 
-        ? this.concatBuffers(carryOverBuffer, value) 
-        : value;
-
-      const metIndex = this.findMetadataHeaderIndex(chunkToProcess);
-
-      if (metIndex !== -1) {
-        // Yield audio preceding .MET (subtracting carryOver offset)
-        if (metIndex > 0) {
-          yield chunkToProcess.slice(0, metIndex);
+        // Accumulate metadata if header was already found
+        if (pendingMetadataBuffer) {
+          pendingMetadataBuffer = this.concatBuffers(pendingMetadataBuffer, value);
+          continue;
         }
-        pendingMetadataBuffer = chunkToProcess.slice(metIndex + 4);
-        carryOverBuffer = new Uint8Array(0);
-      } else {
+
+        // Merge leftover bytes from the end of the previous chunk to catch split .MET headers
+        const chunkToProcess =
+          carryOverBuffer.length > 0 ? this.concatBuffers(carryOverBuffer, value) : value;
+
+        const metIndex = this.findMetadataHeaderIndex(chunkToProcess);
+
+        if (metIndex !== -1) {
+          // Yield audio preceding .MET (subtracting carryOver offset)
+          if (metIndex > 0) {
+            yield chunkToProcess.slice(0, metIndex);
+          }
+          pendingMetadataBuffer = chunkToProcess.slice(metIndex + 4);
+          carryOverBuffer = new Uint8Array(0);
         // Retain last 3 bytes in carryOverBuffer in case .MET is split into the next chunk
-        if (chunkToProcess.length >= 3) {
+        } else if (chunkToProcess.length >= 3) {
           const yieldableLength = chunkToProcess.length - 3;
           if (yieldableLength > 0) {
             yield chunkToProcess.slice(0, yieldableLength);
@@ -80,6 +101,8 @@ export class Lyria3Client {
           carryOverBuffer = chunkToProcess;
         }
       }
+    } finally {
+      reader.releaseLock();
     }
 
     // Flush any leftover bytes in carryOverBuffer if stream ended without metadata
@@ -87,19 +110,22 @@ export class Lyria3Client {
       yield carryOverBuffer;
     }
 
-    // Parse accumulated metadata at stream end
-    let trackMetadata: GeneratedAudioTrack | null = null;
-    if (pendingMetadataBuffer && pendingMetadataBuffer.length > 0) {
-      try {
-        const jsonString = new TextDecoder().decode(pendingMetadataBuffer);
-        trackMetadata = JSON.parse(jsonString);
-      } catch (err) {
-        throw new Error('Failed to parse track metadata JSON from stream end.');
-      }
+    if (!pendingMetadataBuffer || pendingMetadataBuffer.length === 0) {
+      throw new Error('Stream completed without returning .MET track metadata.');
     }
 
-    if (!trackMetadata) {
-      throw new Error('Stream completed without returning track metadata.');
+    // Parse accumulated metadata at stream end
+    let trackMetadata: GeneratedAudioTrack;
+    try {
+      const jsonString = decoder.decode(pendingMetadataBuffer);
+      trackMetadata = JSON.parse(jsonString) as GeneratedAudioTrack;
+    } catch {
+      throw new Error('Failed to parse track metadata JSON from stream end.');
+    }
+
+    // Detect mid-stream safety or upstream errors written into the closing .MET frame
+    if (trackMetadata.status === 'FAILED' || trackMetadata.error) {
+      throw new Error(trackMetadata.error || 'Audio generation failed mid-stream.');
     }
 
     return trackMetadata;

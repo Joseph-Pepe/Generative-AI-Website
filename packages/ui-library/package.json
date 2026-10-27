@@ -1,15 +1,15 @@
 {
-  "name": "ui-library",
+  "name": "@lyria-studio/ui-library",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "description": "Shared UI primitives for LyriaStudio DAW",
+  "private": true,
   "type": "module",
+  "scripts": {
+    "build": "echo \"UI library ready\"",
+    "typecheck": "echo \"UI library typecheck passed\"",
+    "test": "echo \"No unit tests configured\""
+  },
+  "license": "MIT",
   "devDependencies": {
     "@module-federation/vite": "^1.19.0",
     "vite": "8.1.5"

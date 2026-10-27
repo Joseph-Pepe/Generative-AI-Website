@@ -1,5 +1,7 @@
+import { StemName } from '@lyria-studio/shared-types';
+
 export interface TrackStemNode {
-  name: 'vocals' | 'drums' | 'bass' | 'other';
+  name: StemName;
   buffer: AudioBuffer;
   sourceNode: AudioBufferSourceNode | null;
   gainNode: GainNode;
@@ -7,29 +9,43 @@ export interface TrackStemNode {
   isMuted: boolean;
   isSoloed: boolean;
   gain: number;
+  pan: number;
 }
 
 /*
     - The Editor MFE is a browser-based multi-track DAW. 
     - When a track is sent to the editor, it initializes a job to demix the mixed audio into 4 distinct stems: Vocals, Drums, Bass, and Other (Instruments/Synths) using deep learning models (such as Demucs/Spleeter running via WebAssembly/ONNX workers or backend GPU clusters).
 */
-
 export class MultitrackAudioEngine {
-  private ctx: AudioContext;
-  private stems: Map<string, TrackStemNode> = new Map();
-  private masterGain: GainNode;
-  private isPlaying: boolean = false;
-  private startTime: number = 0;
-  private pauseOffset: number = 0;
+  private readonly ctx: AudioContext;
+  private readonly stems: Map<StemName, TrackStemNode> = new Map();
+  private readonly masterGain: GainNode;
+  private isPlaying = false;
+  private startTime = 0;
+  private pauseOffset = 0;
+  private onPlaybackEnded?: () => void;
 
-  constructor(sharedContext: AudioContext) {
+  constructor(sharedContext: AudioContext, onPlaybackEnded?: () => void) {
     this.ctx = sharedContext;
     this.masterGain = this.ctx.createGain();
     this.masterGain.connect(this.ctx.destination);
+    this.onPlaybackEnded = onPlaybackEnded;
   }
 
-  async loadStem(name: TrackStemNode['name'], audioUrl: string): Promise<void> {
+  async loadStem(name: StemName, audioUrl: string): Promise<void> {
+    // Clean up existing nodes for this stem to prevent Web Audio graph memory leaks
+    const existing = this.stems.get(name);
+    if (existing) {
+      existing.sourceNode?.stop();
+      existing.sourceNode?.disconnect();
+      existing.gainNode.disconnect();
+      existing.panNode.disconnect();
+    }
+
     const response = await fetch(audioUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch stem '${name}' (${response.status})`);
+    }
     const arrayBuffer = await response.arrayBuffer();
     const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
 
@@ -48,6 +64,22 @@ export class MultitrackAudioEngine {
       isMuted: false,
       isSoloed: false,
       gain: 1.0,
+      pan: 0.0,
+    });
+  }
+
+  /**
+   * Recomputes effective gain for every stem based on the DAW Mute + Solo matrix:
+   * - If ANY stem is Soloed, only soloed (and unmuted) stems are audible.
+   * - Otherwise, all unmuted stems play at their individual fader gain.
+   */
+  private syncEffectiveGains(): void {
+    const anySoloed = Array.from(this.stems.values()).some((s) => s.isSoloed);
+
+    this.stems.forEach((stem) => {
+      const isAudible = anySoloed ? stem.isSoloed && !stem.isMuted : !stem.isMuted;
+      const targetGain = isAudible ? stem.gain : 0;
+      stem.gainNode.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.01);
     });
   }
 
@@ -55,17 +87,37 @@ export class MultitrackAudioEngine {
     if (this.isPlaying || this.stems.size === 0) return;
 
     if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      void this.ctx.resume();
     }
+
+    const firstStem = Array.from(this.stems.values())[0];
+    if (firstStem && this.pauseOffset >= firstStem.buffer.duration) {
+      this.pauseOffset = 0;
+    }
+
+    let attachedEndedHandler = false;
 
     this.stems.forEach((stem) => {
       const source = this.ctx.createBufferSource();
       source.buffer = stem.buffer;
       source.connect(stem.gainNode);
+
+      if (!attachedEndedHandler) {
+        attachedEndedHandler = true;
+        source.onended = () => {
+          if (this.isPlaying) {
+            this.isPlaying = false;
+            this.pauseOffset = 0;
+            this.onPlaybackEnded?.();
+          }
+        };
+      }
+
       source.start(0, this.pauseOffset);
       stem.sourceNode = source;
     });
 
+    this.syncEffectiveGains();
     this.startTime = this.ctx.currentTime - this.pauseOffset;
     this.isPlaying = true;
   }
@@ -75,6 +127,7 @@ export class MultitrackAudioEngine {
 
     this.stems.forEach((stem) => {
       if (stem.sourceNode) {
+        stem.sourceNode.onended = null;
         stem.sourceNode.stop();
         stem.sourceNode.disconnect();
         stem.sourceNode = null;
@@ -85,96 +138,120 @@ export class MultitrackAudioEngine {
     this.isPlaying = false;
   }
 
-  setGain(name: string, value: number): void {
+  setGain(name: StemName, value: number): void {
     const stem = this.stems.get(name);
     if (stem) {
-      stem.gain = value;
-      if (!stem.isMuted) {
-        stem.gainNode.gain.setTargetAtTime(value, this.ctx.currentTime, 0.01);
-      }
+      stem.gain = Math.max(0, Math.min(1, value));
+      this.syncEffectiveGains();
     }
   }
 
-  toggleMute(name: string): boolean {
+  setPan(name: StemName, value: number): void {
+    const stem = this.stems.get(name);
+    if (stem) {
+      stem.pan = Math.max(-1, Math.min(1, value));
+      stem.panNode.pan.setTargetAtTime(stem.pan, this.ctx.currentTime, 0.01);
+    }
+  }
+
+  toggleMute(name: StemName): boolean {
     const stem = this.stems.get(name);
     if (!stem) return false;
 
     stem.isMuted = !stem.isMuted;
-    const targetGain = stem.isMuted ? 0 : stem.gain;
-    stem.gainNode.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.01);
+    this.syncEffectiveGains();
     return stem.isMuted;
   }
 
-  exportMasterMix(): Promise<Blob> {
-    return new Promise((resolve) => {
-      // Implement offline rendering using OfflineAudioContext
-      const firstStem = Array.from(this.stems.values())[0];
-      if (!firstStem) throw new Error('No stems to export');
+  toggleSolo(name: StemName): boolean {
+    const stem = this.stems.get(name);
+    if (!stem) return false;
 
-      const offlineCtx = new OfflineAudioContext(
-        firstStem.buffer.numberOfChannels,
-        firstStem.buffer.length,
-        firstStem.buffer.sampleRate
-      );
-
-      this.stems.forEach((stem) => {
-        if (stem.isMuted) return;
-        const source = offlineCtx.createBufferSource();
-        const gain = offlineCtx.createGain();
-        source.buffer = stem.buffer;
-        gain.gain.value = stem.gain;
-        source.connect(gain);
-        gain.connect(offlineCtx.destination);
-        source.start(0);
-      });
-
-      offlineCtx.startRendering().then((renderedBuffer) => {
-        // Convert AudioBuffer to WAV Blob
-        const wavBlob = this.audioBufferToWav(renderedBuffer);
-        resolve(wavBlob);
-      });
-    });
+    stem.isSoloed = !stem.isSoloed;
+    this.syncEffectiveGains();
+    return stem.isSoloed;
   }
 
+  async exportMasterMix(): Promise<Blob> {
+    const firstStem = Array.from(this.stems.values())[0];
+    if (!firstStem) throw new Error('No stems loaded to export');
+
+    const offlineCtx = new OfflineAudioContext(
+      firstStem.buffer.numberOfChannels,
+      firstStem.buffer.length,
+      firstStem.buffer.sampleRate
+    );
+
+    const anySoloed = Array.from(this.stems.values()).some((s) => s.isSoloed);
+
+    this.stems.forEach((stem) => {
+      const isAudible = anySoloed ? stem.isSoloed && !stem.isMuted : !stem.isMuted;
+      if (!isAudible) return;
+
+      const source = offlineCtx.createBufferSource();
+      const gain = offlineCtx.createGain();
+      const panner = offlineCtx.createStereoPanner();
+
+      source.buffer = stem.buffer;
+      gain.gain.value = stem.gain;
+      panner.pan.value = stem.pan;
+
+      source.connect(gain);
+      gain.connect(panner);
+      panner.connect(offlineCtx.destination);
+      source.start(0);
+    });
+
+    const renderedBuffer = await offlineCtx.startRendering();
+    return this.audioBufferToWav(renderedBuffer);
+  }
+
+  /**
+   * Encodes an AudioBuffer into a standard 44-byte header 16-bit PCM WAV Blob.
+   * Standard 16-bit PCM WAV encoding algorithm
+   */
   private audioBufferToWav(buffer: AudioBuffer): Blob {
-    // Standard 16-bit PCM WAV encoding algorithm
     const numOfChan = buffer.numberOfChannels;
-    const length = buffer.length * numOfChan * 2 + 44;
-    const out = new DataView(new ArrayBuffer(length));
+    const sampleRate = buffer.sampleRate;
+    const dataLength = buffer.length * numOfChan * 2;
+    const totalLength = 44 + dataLength;
+    const out = new DataView(new ArrayBuffer(totalLength));
+
+    const writeAscii = (offset: number, str: string) => {
+      for (let i = 0; i < str.length; i++) {
+        out.setUint8(offset + i, str.charCodeAt(i));
+      }
+    };
+
+    // Standard 44-byte RIFF/WAVE Header with exact byte offsets
+    writeAscii(0, 'RIFF');
+    out.setUint32(4, totalLength - 8, true);
+    writeAscii(8, 'WAVE');
+    writeAscii(12, 'fmt ');
+    out.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
+    out.setUint16(20, 1, true); // AudioFormat (1 = PCM)
+    out.setUint16(22, numOfChan, true);
+    out.setUint32(24, sampleRate, true);
+    out.setUint32(28, sampleRate * numOfChan * 2, true); // ByteRate
+    out.setUint16(32, numOfChan * 2, true); // BlockAlign
+    out.setUint16(34, 16, true); // BitsPerSample
+    writeAscii(36, 'data');
+    out.setUint32(40, dataLength, true);
+
     const channels: Float32Array[] = [];
-    let sampleRate = buffer.sampleRate;
-    let offset = 0;
-    let pos = 0;
-
-    // Write WAV Header
-    const setUint32 = (data: number) => { out.setUint32(pos, data, true); pos += 4; };
-    const setUint16 = (data: number) => { out.setUint16(pos, data, true); pos += 2; };
-
-    out.setUint32(0, 0x46464952, false); // "RIFF"
-    setUint32(length - 8);
-    out.setUint32(8, 0x45564157, false); // "WAVE"
-    out.setUint32(12, 0x20746d66, false); // "fmt "
-    setUint32(16);
-    setUint16(1); // PCM
-    setUint16(numOfChan);
-    setUint32(sampleRate);
-    setUint32(sampleRate * 2 * numOfChan);
-    setUint16(numOfChan * 2);
-    setUint16(16);
-    out.setUint32(36, 0x61746164, false); // "data"
-    setUint32(length - pos - 4);
-
-    for (let i = 0; i < buffer.numberOfChannels; i++)
+    for (let i = 0; i < numOfChan; i++) {
       channels.push(buffer.getChannelData(i));
+    }
 
-    while (pos < length) {
-      for (let i = 0; i < numOfChan; i++) {
-        let sample = Math.max(-1, Math.min(1, channels[i][offset]));
-        sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
-        out.setInt16(pos, sample, true);
+    let pos = 44;
+    for (let offset = 0; offset < buffer.length; offset++) {
+      for (let ch = 0; ch < numOfChan; ch++) {
+        const rawSample = channels[ch]?.[offset] ?? 0;
+        const clamped = Math.max(-1, Math.min(1, rawSample));
+        const intSample = (clamped < 0 ? clamped * 32768 : clamped * 32767) | 0;
+        out.setInt16(pos, intSample, true);
         pos += 2;
       }
-      offset++;
     }
 
     return new Blob([out.buffer], { type: 'audio/wav' });
