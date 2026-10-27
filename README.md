@@ -10,7 +10,7 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)](https://redis.io/)
 
-**LyriaStudio** is a next-generation, browser-based **Digital Audio Workstation (DAW)** and AI music production platform built on a **Micro Frontend (MFE) Architecture** using **React 19**, **Node.js 24**, **pnpm 11** and **Vite 8**. Powered by **Google Gemini Lyria 3**, it enables artists, producers, and creators to generate high-fidelity (studio-quality) music from text prompts, receive intelligent genre/mood suggestions, demix audio into multi-track stems in real time, and edit compositions with professional-grade web audio processing.
+**LyriaStudio** is a next-generation, browser-based **Digital Audio Workstation (DAW)** and AI music production platform built on a **Micro Frontend (MFE) Architecture** using **React 19.2**, **Node.js 24**, **pnpm 11** and **Vite 8**. Powered by **Google Gemini Lyria 3**, it enables artists, producers, and creators to generate high-fidelity (studio-quality) music from text prompts, receive intelligent genre/mood suggestions, demix audio into multi-track stems in real time, and edit compositions with professional-grade web audio processing, backed by a hardened **Node.js 24 BFF Gateway** featuring **Valkey 8 / Redis Lua rate limiting with a Circuit-Broken Local Fallback**, **RFC 9457 (`ProblemDetail`)** error contracts, **W3C `traceparent`** distributed tracing, and **zero-downtime graceful shutdown**..
 
 <img width="1920" height="935" alt="image" src="https://github.com/user-attachments/assets/bf0f69b7-cfa5-4cf1-8dc0-fbb48d91c30f" />
 
@@ -39,6 +39,12 @@
    - Powered by in-browser **ONNX Runtime Web** (WebGPU/WASM accelerated) for zero-latency local processing, with optional cloud inference fallback.
    - Individual stem control: Mute, Solo, Pan, and Level adjustment.
 
+5. 🛡️ Enterprise Node.js 24 Gateway, Circuit-Broken Rate Limiting & RFC 9457 Resiliency (`services/backend-gateway`)
+  - **Two-Tier Rate Limiter (Valkey 8 Lua Primary + Circuit-Broken Local Fallback):** Executes an atomic sliding-window Lua script via cached `EVALSHA` and millisecond-precise `PEXPIRE` with a `250ms` fail-fast `commandTimeout` and `enableOfflineQueue: false`. If Valkey/Redis fails `5` consecutive times, an in-memory Circuit Breaker opens for `15s`, bypassing dead sockets in `~0.05ms` and enforcing a bounded local sliding window (capped at `10,000` users to prevent `OutOfMemory` leaks) while emitting `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `Retry-After` headers.
+  - **RFC 9457 (`ProblemDetail`) & Mid-Stream Crash Protection:** Standardized `application/problem+json` error responses (`type`, `title`, `status`, `detail`, `instance`, `timestamp`, `traceparent`). During chunked binary audio streaming (`/api/v1/lyria/generate-stream`), guards against `ERR_HTTP_HEADERS_SENT` crashes by checking `!res.headersSent` before emitting HTTP errors, or appending a closing `.MET` error frame if headers were already flushed.
+  - **Zero-Trust Perimeter & W3C Distributed Tracing:** Trusts upstream cloud load balancers (`trust proxy`), strips spoofed `x-gateway-validated` headers, sets `Strict-Transport-Security` (HSTS), `X-Frame-Options: DENY`, and `X-Content-Type-Options: nosniff`, and propagates incoming W3C `traceparent` headers (or generates a fresh trace ID) across every HTTP response.
+  - **Hardened WebSockets & Connection Pools:** Caps WebSocket binary frames at `1MB` (`maxPayload`), runs a `30s` Ping/Pong heartbeat sweeper to terminate zombie sockets, and tunes the PostgreSQL `pg.Pool` (`max: 20`, `connectionTimeoutMillis: 3000`, `maxUses: 7500`) with immediate startup `client.release()`.
+  - **Zero-Downtime Graceful Shutdown (`SIGTERM` / `SIGINT`):** Intercepts container termination signals, closes active WebSocket sessions with code `1001`, drains in-flight HTTP streams, and cleanly closes Valkey and PostgreSQL pools within a `15s` deadline.
 ---
 
 ## 🏗️ Micro Frontend Architecture
@@ -65,16 +71,22 @@ The application uses a Distributed Module Federation model powered by Vite 8. Ea
            | REST / SSE / WebSockets | Audio Streaming / ONNX    | GraphQL / gRPC
            v                         v                           v
 +-----------------------------------------------------------------------------------+
-|                         NODE.JS 24 AUDIO GATEWAY & BFF                            |
+|              NODE.JS 24 AUDIO GATEWAY & BFF (Port 8000 • Non-Root)                |
+|  • Zero-Trust Headers (HSTS/nosniff/DENY) + W3C traceparent Context Propagation   |
+|  • RFC 9457 ProblemDetail Contracts + Safe Mid-Stream (.MET) Error Recovery       |
+|  • WebSocket Multiplexer (1MB Payload Cap + 30s Ping/Pong Zombie Eviction)        |
+|  • 15s Graceful Shutdown Drain (SIGTERM/SIGINT across HTTP, WS, Valkey & PG Pool) |
 |                                                                                   |
 |  +-------------------+   +--------------------+   +----------------------------+  |
 |  | Gemini Lyria 3    |   | Demixing Engine    |   | Recommendation Vector DB   |  |
 |  | Orchestrator      |   | (Demucs / WASM     |   | (User Interest Profiling   |  |
 |  | (Audio Streaming) |   |  / Worker Threads) |   |  & Prompt Optimization)    |  |
 |  +-------------------+   +--------------------+   +----------------------------+  |
-|  +-----------------------------------------------------------------------------+  |
-|  |       PostgreSQL (Generations DB)      |    Redis (Distributed Rate Limit)  |  |
-|  +-----------------------------------------------------------------------------+  |
+|  +------------------------------------+   +------------------------------------+  |
+|  | PostgreSQL 15+ (Drizzle ORM Pool)  |   | Valkey 8 / Redis 8 (250ms Timeout) |  |
+|  | • Max 20 Conn / 3s Connect Timeout |   | • Primary: Cached EVALSHA + PEXPIRE|  |
+|  | • Composite & Partial Status Index |   | • Fallback: Circuit-Broken 10k RAM |  |
+|  +------------------------------------+   +------------------------------------+  |
 +-----------------------------------------------------------------------------------+
 ```
 
@@ -128,13 +140,12 @@ Provides the visual DAW interface, displays real-time streaming feedback (receiv
 ---
 
 ## 📋 System Prerequisites
+
 Before setting up the project locally, verify that your development environment meets the strict modern hardware and runtime requirements for real-time web audio processing:
 
-Node.js: v24.0.0 or higher (Required for experimental WebAssembly SIMD optimizations and native fetch streams).
-
-Package Manager: pnpm v10.0.0 or higher (Corepack enabled recommended: corepack enable pnpm).
-
-Databases: A local or cloud instance of **PostgreSQL** (v15+) and a **Redis Cluster** (v7+) running and accessible.
+- **Node.js:** `v24.0.0` or higher (Required for WebAssembly SIMD optimizations and native fetch streams).
+- **Package Manager:** `pnpm v11.15.1+` via Corepack (`corepack enable`). Root `pnpm.overrides` automatically locks all Micro Frontends to a single singleton `react@^19.2.8` and `react-dom@^19.2.8` runtime.
+- **Databases:** PostgreSQL (`v15+`) and a **Valkey 8 / Redis 8** cluster running on port `6379`.
 
 Google Cloud / AI Studio: An active API key with access to the Gemini Lyria 3 generative audio model (models/lyria-3-pro-preview).
 
@@ -237,14 +248,22 @@ pnpm preview
 
 ---
 
-## 🚀 Test & Run Docker Container
+## 🚀 Test & Run Docker Container (Multi-Stage Non-Root `pnpm deploy`)
+
+The production `Dockerfile` uses `corepack` and `pnpm --filter backend-gateway --prod deploy` to isolate only production dependencies, executes under an unprivileged `node:node` user with `--max-old-space-size=1536`, and includes a native container `HEALTHCHECK` against `/health/readiness`.
 
 Run these two commands to build and launch your containerized DAW:
 
 ```text
-# 1. Build the Docker image from the root workspace
+# 1. Build the multi-stage production Docker image from the root workspace
 docker build -t lyria-studio:latest .
 
-# 2. Run the container and expose port 8000
+# 2. Run the hardened non-root container and expose port 8000
 docker run -p 8000:8000 --env-file .env.local lyria-studio:latest
+
+# 3. Verify the Cloud Readiness Probe & W3C Traceparent Header
+curl -i http://localhost:8000/health/readiness
+
+# 4. Verify RFC 9457 ProblemDetail (application/problem+json) Error Contract
+curl -i http://localhost:8000/api/v1/non-existent-route
 ```
