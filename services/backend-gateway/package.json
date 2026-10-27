@@ -1,32 +1,27 @@
 {
   "name": "backend-gateway",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Node.js 24 AI Audio Gateway & BFF for LyriaStudio",
+  "main": "dist/services/backend-gateway/src/server.js",
+  "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "start": "node dist/server.js",
+    "start": "node dist/services/backend-gateway/src/server.js",
     "build": "tsc",
     "db:push": "drizzle-kit push",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
+  "license": "MIT",
   "devDependencies": {
-    "@module-federation/vite": "^1.19.0",
     "@tsconfig/node24": "^24.0.4",
     "@types/cors": "^2.8.19",
-    "@types/dotenv": "^8.2.3",
     "@types/express": "^5.0.6",
     "@types/node": "^26.1.1",
     "@types/pg": "^8.20.0",
     "@types/ws": "^8.18.1",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.23.1",
-    "typescript": "^7.0.2",
-    "vite": "8.1.5"
+    "typescript": "^7.0.2"
   },
   "dependencies": {
     "@google/genai": "^2.13.0",
@@ -36,7 +31,6 @@
     "express": "^5.2.1",
     "ioredis": "^5.4.1",
     "pg": "^8.22.0",
-    "postgres": "^3.4.9",
     "ws": "^8.21.1"
   }
 }

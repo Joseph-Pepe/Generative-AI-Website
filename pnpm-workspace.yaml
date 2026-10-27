@@ -1,10 +1,9 @@
-# Initialized a clean pnpm workspace to manage all frontends and shared packages cohesively.
+# Initialized a clean pnpm workspace to manage all frontends, shared packages, and backend services cohesively.
 packages:
   - 'apps/*'
   - 'packages/*'
   - 'services/*'
 allowBuilds:
   esbuild: true
-  protobufjs: set this to true or false
-  '@google/genai': set this to true or false
-  
+  protobufjs: true
+  '@google/genai': true
