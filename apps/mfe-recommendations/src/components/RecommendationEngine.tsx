@@ -3,8 +3,8 @@ import { eventBus } from '@lyria-studio/event-bus';
 
 import '../index.css';
 
-// Provides interactive acoustic presets, 
-// a Smart Prompt Enricher that transforms basic ideas into studio-engineered Lyria 3 prompts, 
+// Provides interactive acoustic presets,
+// a Smart Prompt Enricher that transforms basic ideas into studio-engineered Lyria 3 prompts,
 // and real-time taste profiling via LYRIA:GENERATION_COMPLETED events:
 export interface AcousticPreset {
   id: string;
@@ -72,7 +72,7 @@ const ACOUSTIC_ENRICHMENTS: Record<string, string> = {
 };
 
 export default function RecommendationEngine() {
-  const [seedIdea, setSeedIdea] = useState('');
+  const [seedIdea, setSeedIdea] = useState<string>('');
   const [selectedGenre, setSelectedGenre] = useState<AcousticPreset['genre']>('Synthwave');
   const [selectedMood, setSelectedMood] = useState<AcousticPreset['mood']>('Energetic');
   const [preferredGenre, setPreferredGenre] = useState<string | null>(null);
@@ -89,7 +89,7 @@ export default function RecommendationEngine() {
   }, []);
 
   // Sort presets so the user's learned genre affinity surfaces first
-  const sortedPresets = useMemo(() => {
+  const sortedPresets = useMemo<readonly AcousticPreset[]>(() => {
     if (!preferredGenre) return STUDIO_PRESETS;
     return [...STUDIO_PRESETS].sort((a, b) =>
       a.genre === preferredGenre ? -1 : b.genre === preferredGenre ? 1 : 0
@@ -108,7 +108,7 @@ export default function RecommendationEngine() {
     });
   };
 
-  const handleEnrichAndApply = (e: React.FormEvent) => {
+  const handleEnrichAndApply = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const baseText = seedIdea.trim() || `A ${selectedMood.toLowerCase()} ${selectedGenre} composition`;
     const acousticTail = ACOUSTIC_ENRICHMENTS[selectedGenre] ?? ACOUSTIC_ENRICHMENTS['Synthwave'];
@@ -126,8 +126,8 @@ export default function RecommendationEngine() {
     <div className="bg-slate-900 text-white p-6 rounded-xl border border-slate-800 shadow-2xl max-w-xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
-            💡 AI Prompt Enricher & Acoustic Presets
+          <h2 className="text-xl font-bold bg-linear-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
+            💡 AI Prompt Enricher &amp; Acoustic Presets
           </h2>
           <p className="text-xs text-slate-400">
             Click any preset or enrich a raw idea to populate the Lyria 3 Studio instantly.
@@ -141,14 +141,17 @@ export default function RecommendationEngine() {
       </div>
 
       {/* Smart Prompt Enrichment Form */}
-      <form onSubmit={handleEnrichAndApply} className="mb-6 p-4 bg-slate-950/70 rounded-xl border border-slate-800 space-y-3">
+      <form
+        onSubmit={handleEnrichAndApply}
+        className="mb-6 p-4 bg-slate-950/70 rounded-xl border border-slate-800 space-y-3"
+      >
         <label className="block text-xs font-semibold uppercase tracking-wider text-cyan-400">
           ✨ Smart Prompt Enricher
         </label>
         <input
           type="text"
           value={seedIdea}
-          onChange={(e) => setSeedIdea(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSeedIdea(e.target.value)}
           placeholder="Enter a basic idea (e.g., 'late night coding beat' or 'boss fight theme')..."
           className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-cyan-500 outline-none"
         />
@@ -156,7 +159,9 @@ export default function RecommendationEngine() {
         <div className="grid grid-cols-2 gap-3">
           <select
             value={selectedGenre}
-            onChange={(e) => setSelectedGenre(e.target.value as AcousticPreset['genre'])}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              setSelectedGenre(e.target.value as AcousticPreset['genre'])
+            }
             className="bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white"
           >
             <option value="Synthwave">Genre: Synthwave</option>
@@ -167,7 +172,9 @@ export default function RecommendationEngine() {
 
           <select
             value={selectedMood}
-            onChange={(e) => setSelectedMood(e.target.value as AcousticPreset['mood'])}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              setSelectedMood(e.target.value as AcousticPreset['mood'])
+            }
             className="bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white"
           >
             <option value="Energetic">Mood: Energetic</option>
@@ -179,9 +186,9 @@ export default function RecommendationEngine() {
 
         <button
           type="submit"
-          className="w-full py-2 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-xs font-semibold rounded-lg shadow transition-all cursor-pointer"
+          className="w-full py-2 bg-linear-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-xs font-semibold rounded-lg shadow transition-all cursor-pointer"
         >
-          ⚡ Enrich & Send to Lyria 3 Studio
+          ⚡ Enrich &amp; Send to Lyria 3 Studio
         </button>
       </form>
 
@@ -192,7 +199,7 @@ export default function RecommendationEngine() {
         </h3>
 
         <div className="grid grid-cols-1 gap-3">
-          {sortedPresets.map((preset) => {
+          {sortedPresets.map((preset: AcousticPreset) => {
             const isApplied = lastAppliedId === preset.id;
             return (
               <div
@@ -225,7 +232,7 @@ export default function RecommendationEngine() {
                   <span className="px-2 py-0.5 rounded bg-slate-700/70 text-slate-300">
                     {preset.bpm} BPM &bull; {preset.keySignature}
                   </span>
-                  {preset.tags.map((tag) => (
+                  {preset.tags.map((tag: string) => (
                     <span key={tag} className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
                       {tag}
                     </span>
