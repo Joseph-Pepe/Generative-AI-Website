@@ -10,6 +10,7 @@ import { federation } from '@module-federation/vite'; // or '@originjs/vite-plug
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '../../', '');
   const generatorUrl = env.VITE_MFE_GENERATOR_URL || 'http://localhost:3001/mf-manifest.json';
+  const recommendationsUrl = env.VITE_MFE_RECOMMENDATIONS_URL || 'http://localhost:3002/mf-manifest.json';
 
   return {
     server: {
@@ -41,8 +42,8 @@ export default defineConfig(({ mode }) => {
         remotes: {
           // 🛠️ Point to the newly enabled modern manifest entry endpoint! Finds and links this micro frontend.
           mfeAudioGenerator: generatorUrl,
-          // mfeAudioGenerator: 'http://localhost:3001/mf-manifest.json',
-          // mfeAudioRecommendations: 'http://localhost:3002/mf-manifest.json',
+          // To display RecommendationEngine side-by-side with GeneratorStudio on Port 3000:
+          mfeAudioRecommendations: recommendationsUrl,
           // mfeAudioEditor: 'http://localhost:3003/mf-manifest.json',
         },
         shared: {

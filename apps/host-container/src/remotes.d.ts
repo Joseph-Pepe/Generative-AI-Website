@@ -15,3 +15,8 @@ declare module 'mfeAudioGenerator/GeneratorStudio' {
 }
 
 // To add more micro-frontends later, append more declare blocks to this same file....
+declare module 'mfeAudioRecommendations/RecommendationEngine' {
+  import React from 'react';
+  const RecommendationEngine: React.ComponentType<Record<string, never>>;
+  export default RecommendationEngine;
+}

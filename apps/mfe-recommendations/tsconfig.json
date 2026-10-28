@@ -1,0 +1,22 @@
+{
+  "extends": "@tsconfig/node24/tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+    "paths": {
+      "@lyria-studio/shared-types": ["../../packages/shared-types/src/index.ts"],
+      "@lyria-studio/event-bus": ["../../packages/event-bus/src/index.ts"],
+      "@lyria-studio/*": ["../../packages/*/src"]
+    },
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src/**/*", "../../packages/*/src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -9,7 +9,7 @@
     "start": "node dist/services/backend-gateway/src/server.js",
     "build": "tsc",
     "db:push": "drizzle-kit push",
-    "test": "node --test"
+    "test": "node --import tsx --test test/*.test.ts"
   },
   "license": "MIT",
   "devDependencies": {

@@ -29,6 +29,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["src/**/*", "../../packages/*/src/**/*"],
+  "include": ["src/**/*", "test/**/*", "../../packages/*/src/**/*"],
   "exclude": ["node_modules", "dist"]
 }

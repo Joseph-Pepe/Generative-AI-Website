@@ -1,16 +1,17 @@
 # 🎵 LyriaStudio: AI Music Generator & Real-Time Audio Demixer
 
-[![React 19](https://img.shields.io/badge/React-19.0.0-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![React 19.2](https://img.shields.io/badge/React-19.2.8-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Node.js 24](https://img.shields.io/badge/Node.js-24_LTS-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![Vite 8.1.5](https://img.shields.io/badge/Vite-8.1.5-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
-[![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4.0.0-38BDF8?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4.3.3-38BDF8?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![Express 5](https://img.shields.io/badge/Express-5.2.1-000000?logo=express&logoColor=white)](https://expressjs.com/)
 [![Google AI Studio](https://img.shields.io/badge/Google%20AI-Lyria%203-4285F4?logo=google&logoColor=white)](https://aistudio.google.com/)
 [![WebAudio API](https://img.shields.io/badge/Web%20Audio-API-FF6F00?logo=webaudio&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
-[![Module Federation](https://img.shields.io/badge/Module%20Federation-Enabled-blueviolet)](https://module-federation.io/)
+[![Module Federation](https://img.shields.io/badge/Module%20Federation-2.0-blueviolet)](https://module-federation.io/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)](https://redis.io/)
+[![Valkey 8 / Redis 8](https://img.shields.io/badge/Valkey_8_/_Redis-8-DC382D?logo=redis&logoColor=white)](https://valkey.io/)
 
-**LyriaStudio** is a next-generation, browser-based **Digital Audio Workstation (DAW)** and AI music production platform built on a **Micro Frontend (MFE) Architecture** using **React 19.2**, **Node.js 24**, **pnpm 11** and **Vite 8**. Powered by **Google Gemini Lyria 3**, it enables artists, producers, and creators to generate high-fidelity (studio-quality) music from text prompts, receive intelligent genre/mood suggestions, demix audio into multi-track stems in real time, and edit compositions with professional-grade web audio processing, backed by a hardened **Node.js 24 BFF Gateway** featuring **Valkey 8 / Redis Lua rate limiting with a Circuit-Broken Local Fallback**, **RFC 9457 (`ProblemDetail`)** error contracts, **W3C `traceparent`** distributed tracing, and **zero-downtime graceful shutdown**..
+**LyriaStudio** is a next-generation, browser-based **Digital Audio Workstation (DAW)** and AI music production platform built on a **Micro Frontend (MFE) Architecture** using **React 19.2**, **Node.js 24**, **pnpm 11**, and **Vite 8**. Powered by **Google Gemini Lyria 3**, it enables artists, producers, and creators to generate high-fidelity (studio-quality) music from text prompts, receive intelligent genre/mood suggestions, demix audio into multi-track stems in real time, and edit compositions with professional-grade web audio processing—backed by a hardened **Node.js 24 BFF Gateway** featuring **Valkey 8 / Redis Lua rate limiting with a Circuit-Broken Local Fallback**, **RFC 9457 (`ProblemDetail`)** error contracts, **W3C `traceparent`** distributed tracing, and **zero-downtime graceful shutdown**.
 
 <img width="1920" height="935" alt="image" src="https://github.com/user-attachments/assets/bf0f69b7-cfa5-4cf1-8dc0-fbb48d91c30f" />
 
@@ -36,12 +37,13 @@
   - **Full DAW Mute/Solo Matrix:** Real-time exponential gain smoothing (`setTargetAtTime`) with true Solo isolation (soloing one or more stems automatically silences non-soloed channels) and Stereo Panner (`StereoPannerNode`) control.
   - Powered by in-browser **ONNX Runtime Web** (WebGPU/WASM accelerated) for zero-latency local processing, with optional cloud inference fallback.
 
-5. 🛡️ Enterprise Node.js 24 Gateway, Circuit-Broken Rate Limiting & RFC 9457 Resiliency (`services/backend-gateway`)
-  - **Two-Tier Rate Limiter (Valkey 8 Lua Primary + Circuit-Broken Local Fallback):** Executes an atomic sliding-window Lua script via cached `EVALSHA` and millisecond-precise `PEXPIRE` with a `250ms` fail-fast `commandTimeout` and `enableOfflineQueue: false`. If Valkey/Redis fails `5` consecutive times, an in-memory Circuit Breaker opens for `15s`, bypassing dead sockets in `~0.05ms` and enforcing a bounded local sliding window (capped at `10,000` users to prevent `OutOfMemory` leaks) while emitting `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `Retry-After` headers.
-  - **RFC 9457 (`ProblemDetail`) & Mid-Stream Crash Protection:** Standardized `application/problem+json` error responses (`type`, `title`, `status`, `detail`, `instance`, `timestamp`, `traceparent`). During chunked binary audio streaming (`/api/v1/lyria/generate-stream`), guards against `ERR_HTTP_HEADERS_SENT` crashes by checking `!res.headersSent` before emitting HTTP errors, or appending a closing `.MET` error frame if headers were already flushed.
-  - **Zero-Trust Perimeter & W3C Distributed Tracing:** Trusts upstream cloud load balancers (`trust proxy`), strips spoofed `x-gateway-validated` headers, sets `Strict-Transport-Security` (HSTS), `X-Frame-Options: DENY`, and `X-Content-Type-Options: nosniff`, and propagates incoming W3C `traceparent` headers (or generates a fresh trace ID) across every HTTP response.
-  - **Hardened WebSockets & Connection Pools:** Caps WebSocket binary frames at `1MB` (`maxPayload`), runs a `30s` Ping/Pong heartbeat sweeper to terminate zombie sockets, and tunes the PostgreSQL `pg.Pool` (`max: 20`, `connectionTimeoutMillis: 3000`, `maxUses: 7500`) with immediate startup `client.release()`.
-  - **Zero-Downtime Graceful Shutdown (`SIGTERM` / `SIGINT`):** Intercepts container termination signals, closes active WebSocket sessions with code `1001`, drains in-flight HTTP streams, and cleanly closes Valkey and PostgreSQL pools within a `15s` deadline.
+5. **🛡️ Enterprise Node.js 24 Gateway, Circuit-Broken Rate Limiting & RFC 9457 Resiliency (`services/backend-gateway`)**
+   - **Two-Tier Rate Limiter (Valkey 8 Lua Primary + Circuit-Broken Local Fallback):** Executes an atomic sliding-window Lua script via cached `EVALSHA` and millisecond-precise `PEXPIRE` with a `250ms` fail-fast `commandTimeout` and `enableOfflineQueue: false`. If Valkey/Redis fails `5` consecutive times, an in-memory Circuit Breaker opens for `15s`, bypassing dead sockets in `~0.05ms` and enforcing a bounded local sliding window (capped at `10,000` users to prevent `OutOfMemory` leaks) while emitting `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `Retry-After` headers.
+   - **RFC 9457 (`ProblemDetail`) & Mid-Stream Crash Protection:** Standardized `application/problem+json` error responses (`type`, `title`, `status`, `detail`, `instance`, `timestamp`, `traceparent`). During chunked binary audio streaming (`/api/v1/lyria/generate-stream`), guards against `ERR_HTTP_HEADERS_SENT` crashes by checking `!res.headersSent` before emitting HTTP errors, or appending a closing `.MET` error frame if headers were already flushed.
+   - **Zero-Trust Perimeter & W3C Distributed Tracing:** Trusts upstream cloud load balancers (`trust proxy`), strips spoofed `x-gateway-validated` headers, sets `Strict-Transport-Security` (HSTS), `X-Frame-Options: DENY`, and `X-Content-Type-Options: nosniff`, and propagates incoming W3C `traceparent` headers (or generates a fresh trace ID) across every HTTP response.
+   - **Hardened WebSockets & Connection Pools:** Caps WebSocket binary frames at `1MB` (`maxPayload`), runs a `30s` Ping/Pong heartbeat sweeper to terminate zombie sockets, and tunes the PostgreSQL `pg.Pool` (`max: 20`, `connectionTimeoutMillis: 3000`, `maxUses: 7500`) with immediate startup `client.release()`.
+   - **Zero-Downtime Graceful Shutdown (`SIGTERM` / `SIGINT`):** Intercepts container termination signals, closes active WebSocket sessions with code `1001`, drains in-flight HTTP streams, and cleanly closes Valkey and PostgreSQL pools within a `15s` deadline.
+
 ---
 
 ## 🏗️ Micro Frontend Architecture
@@ -165,9 +167,9 @@ All build and verification tasks can be executed globally from the workspace roo
 
 Push the Drizzle ORM schema to your connected PostgreSQL database before starting the backend:
 
-``terminal
+```terminal
 pnpm --filter backend-gateway run db:push
-``
+```
 
 **1. Install Workspace Dependencies**
 
@@ -203,6 +205,12 @@ pnpm --filter mfe-audio-editor run build
 
 ```terminal
 pnpm dev --force
+```
+
+**5. Run the Automated Node.js 24 Verification Suite**
+
+```terminal
+pnpm --filter backend-gateway test
 ```
 
 ---
@@ -250,6 +258,40 @@ pnpm build
 # Step 2: Serve the static production builds
 pnpm preview
 ```
+
+---
+
+## 🧪 Automated Integration & Chaos Testing Suite (`node:test`)
+
+LyriaStudio includes a zero-dependency, 6-stage automated integration and chaos test harness (`services/backend-gateway/test/gateway.test.ts`) powered by **Node.js 24's native test runner (`node:test`)**, strict assertions (`node:assert/strict`), and `tsx`.
+
+During test execution (`NODE_ENV=test`), the Express and WebSocket gateway binds to an ephemeral OS port (`127.0.0.1:0`) for isolated, parallelizable verification across shared monorepo packages and backend endpoints—and automatically closes all active HTTP sockets, WebSocket heartbeats, Valkey/Redis clients, and PostgreSQL connection pools upon completion.
+
+### Run the Test Suite
+
+```bash
+# Run from the monorepo workspace root
+pnpm --filter backend-gateway test
+
+# Or run all workspace test scripts across the monorepo
+pnpm test
+```
+
+### 6 Verification Stages Covered
+
+1. **W3C `createTraceparent()` Cryptographic Generator (`@lyria-studio/shared-types`):**
+   Generates 1,000 rapid W3C Trace Context headers (`00-<32-hex-trace-id>-<16-hex-span-id>-01`), asserting strict specification compliance and zero entropy collisions.
+2. **Global EventBus Singleton & Payload Immutability (`@lyria-studio/event-bus`):**
+   Verifies that `eventBus` is anchored to `globalThis.__LYRIA_STUDIO_EVENT_BUS__` across Module Federation boundaries, delivers strongly-typed `RECOMMENDATION:APPLY_PROMPT` payloads, enforces `Object.freeze()` to block rogue cross-MFE state mutation (`TypeError`), and detaches listeners cleanly on unsubscribe.
+3. **Zero-Trust Security Headers & W3C Trace Propagation (`GET /health/readiness`):**
+   Verifies that the gateway strips spoofed `X-Gateway-Validated` headers, enforces `Strict-Transport-Security` (HSTS), `X-Frame-Options: DENY`, and `X-Content-Type-Options: nosniff`, and echoes incoming W3C `traceparent` headers.
+4. **RFC 9457 `ProblemDetail` Error Contracts (`404 Not Found` & `400 Bad Request`):**
+   Proves that unmapped routes and invalid requests return standardized `application/problem+json` payloads containing `title`, `status`, `detail`, `instance`, `timestamp`, and `traceparent`.
+5. **Chunked Binary WAV Streaming & `.MET` Magic Trailer Framing (`POST /api/v1/lyria/generate-stream`):**
+   Streams synthetic 44.1kHz 16-bit PCM audio, verifying the 44-byte `RIFF`/`WAVE` binary header (`0x52 0x49 0x46 0x46`) at byte `0` and extracting the closing `.MET` magic-byte (`0x7f 0x4d 0x45 0x54`) JSON metadata trailer at stream end.
+6. **Two-Tier Distributed Rate Limiter & Circuit-Broken Local Fallback (`HTTP 429`):**
+   Fires 10 rapid requests from a simulated client IP (`X-Forwarded-For: 203.0.113.99`) and proves that the 11th request is rejected with `429 Too Many Requests`, `X-RateLimit-Limit: 10`, `X-RateLimit-Remaining: 0`, `Retry-After: 900`, and an RFC 9457 `ProblemDetail` body—even if the Valkey/Redis cluster is offline and operating on the bounded in-memory local fallback.
+
 
 ---
 

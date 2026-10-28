@@ -718,16 +718,21 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 // Define the port the server will run on (look for BACKEND_PORT first, fallback to 8000)
 const PORT = Number(process.env.BACKEND_PORT || process.env.PORT || 8000);
 
-// Start the server and listen on the specified port
-server.listen(PORT, () => {
-  console.log(`🚀 LyriaStudio Backend Gateway running on port ${PORT} (Node.js ${process.version})`);
-  console.log(`⚡ HTTP Generation API: http://localhost:${PORT}/api/v1/lyria/generate-stream`);
-  console.log(`⚡ HTTP History API:   http://localhost:${PORT}/api/v1/generations/history`);
-  console.log(`⚡ Readiness Probe:     http://localhost:${PORT}/health/readiness`);
-  console.log(`⚡ Test API Endpoint: http://localhost:${PORT}/api/v1/test`);
-  console.log(`🔌 WebSocket Gateway:  ws://localhost:${PORT}/ws`);
-  console.log(`🌐 Local frontend: http://localhost:${PORT}.`);
-});
+// Only bind the port automatically outside of automated test runs (tests bind to ephemeral port 0)
+if (process.env.NODE_ENV !== 'test') {
+  // // Start the server and listen on the specified port
+  server.listen(PORT, () => {
+    console.log(`🚀 LyriaStudio Backend Gateway running on port ${PORT} (Node.js ${process.version})`);
+    console.log(`⚡ HTTP Generation API: http://localhost:${PORT}/api/v1/lyria/generate-stream`);
+    console.log(`⚡ HTTP History API:    http://localhost:${PORT}/api/v1/generations/history`);
+    console.log(`⚡ Readiness Probe:     http://localhost:${PORT}/health/readiness`);
+    console.log(`⚡ Test API Endpoint: http://localhost:${PORT}/api/v1/test`);
+    console.log(`🔌 WebSocket Gateway:  ws://localhost:${PORT}/ws`);
+    console.log(`🌐 Local frontend: http://localhost:${PORT}.`);
+  });
+}
+
+export { app, server, wss, redisClient, pool, wsHeartbeatInterval };
 
 // ======================================================================================
 // ZERO-DOWNTIME GRACEFUL SHUTDOWN (SIGTERM / SIGINT)

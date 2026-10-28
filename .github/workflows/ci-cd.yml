@@ -1,0 +1,283 @@
+name: Polyglot Platform CI/CD (Java 25 Gateway + Node 24 LyriaStudio)
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+# Cancel redundant in-flight CI runs when a new commit is pushed to the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least-privilege permissions (id-token: write enables keyless GCP Workload Identity Federation)
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+env:
+  JAVA_GATEWAY_DIR: ./api-gateway
+  NODE_MONOREPO_DIR: .
+  GCP_REGION: ${{ vars.GCP_REGION || 'us-central1' }}
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'your-gcp-project-id' }}
+  GAR_REPOSITORY: ${{ vars.GAR_REPOSITORY || 'polyglot-platform' }}
+
+jobs:
+  # =================================================================================
+  # JOB 1: JAVA 25 + SPRING BOOT 4.0.8 API GATEWAY (JUnit 5 + Chaos Spy Tests)
+  # =================================================================================
+  java-gateway-ci:
+    name: ☕ Java 25 Gateway (JUnit 5 + Valkey 8)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.JAVA_GATEWAY_DIR }}
+
+    services:
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Eclipse Temurin JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+          cache: 'maven'
+          cache-dependency-path: ${{ env.JAVA_GATEWAY_DIR }}/pom.xml
+
+      - name: Ensure Maven Wrapper is Executable
+        run: chmod +x ./mvnw
+
+      - name: Run 4-Stage JUnit 5 Security, Rate-Limit & Chaos Outage Suite
+        env:
+          SPRING_PROFILES_ACTIVE: local
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+        run: ./mvnw -B clean test
+
+  # =================================================================================
+  # JOB 2: NODE.JS 24 + REACT 19 LYRIASTUDIO MONOREPO (Typecheck + node:test + Build)
+  # =================================================================================
+  node-monorepo-ci:
+    name: ⚡ Node 24 Monorepo (TypeScript 7 + node:test + Vite 8)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.NODE_MONOREPO_DIR }}
+
+    services:
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: lyria
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lyria"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Activate Pinned pnpm via Corepack
+        run: corepack enable
+
+      - name: Get pnpm Store Directory
+        id: pnpm-store
+        shell: bash
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm Virtual Store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install Monorepo Dependencies Deterministically
+        run: pnpm install --frozen-lockfile
+
+      - name: Push Drizzle ORM Schema & Indexes to PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/lyria
+        run: pnpm --filter backend-gateway run db:push
+
+      - name: Run Global Monorepo Type Checking (tsc --noEmit)
+        run: pnpm typecheck
+
+      - name: Run 6-Stage Node.js 24 Integration & Chaos Test Suite (node:test)
+        env:
+          NODE_ENV: test
+          GOOGLE_GEMINI_API_KEY: ci-mock-gemini-key
+          USE_MOCK_AUDIO: 'true'
+          REDIS_URL: redis://localhost:6379
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/lyria
+        run: pnpm --filter backend-gateway test
+
+      - name: Build All Federated Micro-Frontends & Node.js 24 Backend
+        run: pnpm build
+
+  # =================================================================================
+  # JOB 3: DOCKER BUILD GATE & CONDITIONAL CLOUD RUN DEPLOYMENT (ON MAIN MERGE)
+  # =================================================================================
+  docker-build-and-deploy:
+    name: 🐳 Build Images & Deploy to Cloud Run (main)
+    runs-on: ubuntu-latest
+    needs: [java-gateway-ci, node-monorepo-ci]
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'ci-preview' }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # -------------------------------------------------------------------------
+      # 1. KEYLESS GCP OIDC AUTHENTICATION (Runs ONLY on push to main)
+      # -------------------------------------------------------------------------
+      - name: Authenticate to Google Cloud via Workload Identity Federation
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          token_format: 'access_token'
+
+      - name: Configure Docker Credentials for Google Artifact Registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GCP_REGION }}-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+
+      - name: Login to Artifact Registry via gcloud
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          version: '>= 470.0.0'
+
+      - name: Authorize Docker for Artifact Registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+      # -------------------------------------------------------------------------
+      # 2. BUILD (ALL BRANCHES) & PUSH TO ARTIFACT REGISTRY (ONLY ON MAIN)
+      # -------------------------------------------------------------------------
+      - name: Build & Conditionally Push Java 25 API Gateway Image (Leyden AOT + ZGC)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.JAVA_GATEWAY_DIR }}
+          file: ${{ env.JAVA_GATEWAY_DIR }}/Dockerfile
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          load: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+          tags: |
+            ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/api-gateway:${{ github.sha }}
+            ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/api-gateway:latest
+          cache-from: type=gha,scope=java-gateway
+          cache-to: type=gha,mode=max,scope=java-gateway
+
+      - name: Build & Conditionally Push LyriaStudio Node 24 + MFE Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.NODE_MONOREPO_DIR }}
+          file: ${{ env.NODE_MONOREPO_DIR }}/Dockerfile
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          load: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+          tags: |
+            ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/lyria-studio:${{ github.sha }}
+            ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/lyria-studio:latest
+          cache-from: type=gha,scope=lyria-studio
+          cache-to: type=gha,mode=max,scope=lyria-studio
+
+      # -------------------------------------------------------------------------
+      # 3. DEPLOY TO GOOGLE CLOUD RUN (Ordered: BFF First -> Edge Gateway Second)
+      # -------------------------------------------------------------------------
+      - name: Deploy LyriaStudio Node.js 24 BFF & MFEs to Cloud Run
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: deploy-lyria
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: lyria-studio
+          region: ${{ env.GCP_REGION }}
+          image: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/lyria-studio:${{ github.sha }}
+          flags: '--allow-unauthenticated --port=8000 --cpu=2 --memory=2Gi --min-instances=1 --max-instances=50'
+          env_vars: |
+            NODE_ENV=production
+            REDIS_URL=redis://${{ secrets.VALKEY_PRIVATE_IP }}:6379
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            GOOGLE_GEMINI_API_KEY=${{ secrets.GOOGLE_GEMINI_API_KEY }}
+            ALLOWED_ORIGINS=${{ vars.FRONTEND_ALLOWED_ORIGINS || 'https://lyriastudio.ai' }}
+
+      - name: Deploy Java 25 Spring Boot 4 API Gateway to Cloud Run
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: deploy-gateway
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: api-gateway
+          region: ${{ env.GCP_REGION }}
+          image: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/api-gateway:${{ github.sha }}
+          flags: '--allow-unauthenticated --port=8080 --cpu=2 --memory=2Gi --concurrency=250 --min-instances=1 --max-instances=100'
+          env_vars: |
+            SPRING_PROFILES_ACTIVE=prod
+            SPRING_THREADS_VIRTUAL_ENABLED=true
+            REDIS_HOST=${{ secrets.VALKEY_PRIVATE_IP }}
+            REDIS_PORT=6379
+            BACKEND_SERVICE_URL=${{ steps.deploy-lyria.outputs.url }}
+            JWT_ISSUER_URI=${{ secrets.JWT_ISSUER_URI }}
+            OTEL_EXPORTER_OTLP_ENDPOINT=${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
+            MANAGEMENT_TRACING_SAMPLING_PROBABILITY=0.05
+            APP_CORS_ALLOWED_ORIGINS=${{ vars.FRONTEND_ALLOWED_ORIGINS || 'https://lyriastudio.ai' }}
+
+      # -------------------------------------------------------------------------
+      # 4. POST-DEPLOYMENT LIVE SMOKE VERIFICATION
+      # -------------------------------------------------------------------------
+      - name: Verify Live Cloud Run Readiness Probes & W3C Trace Headers
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          echo "🔎 Verifying LyriaStudio BFF at ${{ steps.deploy-lyria.outputs.url }}/health/readiness..."
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 \
+            "${{ steps.deploy-lyria.outputs.url }}/health/readiness"
+
+          echo "🔎 Verifying Java 25 API Gateway at ${{ steps.deploy-gateway.outputs.url }}/actuator/health/readiness..."
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 \
+            "${{ steps.deploy-gateway.outputs.url }}/actuator/health/readiness"
+
+          echo "✅ Production Cloud Run deployment verified!"

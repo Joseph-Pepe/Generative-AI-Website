@@ -1,16 +1,21 @@
-// Host container already manages the global stylesheet!
-// GeneratorStudio component is dynamically mounted into the DOM of the host-container, it will automatically inherit any global stylesheets, CSS variables, or utility classes (like Tailwind CSS) that are already loaded on http://localhost:3000/.
+// Host container manages the global layout, shared 48kHz AudioProvider, and per-MFE fault isolation.
+// Remote MFEs mounted into the DOM automatically communicate across boundaries via @lyria-studio/event-bus.
 
 import React, { Component, ErrorInfo, ReactNode, Suspense } from 'react';
 import { AudioProvider } from './providers/AudioProvider';
+
+interface ErrorBoundaryProps {
+  mfeName: string;
+  children: ReactNode;
+}
 
 interface ErrorBoundaryState {
   hasError: boolean;
   errorMessage: string;
 }
 
-// Prevents runtime errors from crashing the entire host container.
-class MfeErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+// Per-MFE Error Boundary: Isolates runtime render faults to the individual remote widget
+class MfeErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   override state: ErrorBoundaryState = { hasError: false, errorMessage: '' };
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
@@ -18,7 +23,11 @@ class MfeErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryS
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error('🔥 Micro-Frontend Render Boundary Caught Error:', error, info.componentStack);
+    console.error(
+      `🔥 [${this.props.mfeName}] Micro-Frontend Render Boundary Caught Error:`,
+      error,
+      info.componentStack
+    );
   }
 
   override render() {
@@ -32,11 +41,12 @@ class MfeErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryS
             backgroundColor: '#18181b',
             borderRadius: '12px',
             border: '1px solid #ef4444',
-            margin: '2rem auto',
-            maxWidth: '640px',
+            margin: '0 auto',
+            width: '100%',
+            boxSizing: 'border-box',
           }}
         >
-          <h3>⚠️ Micro-Frontend Fault Isolated</h3>
+          <h3>⚠️ {this.props.mfeName} Fault Isolated</h3>
           <p style={{ color: '#a1a1aa', fontSize: '0.9rem' }}>{this.state.errorMessage}</p>
           <button
             onClick={() => this.setState({ hasError: false, errorMessage: '' })}
@@ -51,7 +61,7 @@ class MfeErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryS
               fontWeight: 600,
             }}
           >
-            🔄 Retry Mounting MFE
+            🔄 Retry Mounting {this.props.mfeName}
           </button>
         </div>
       );
@@ -60,7 +70,7 @@ class MfeErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryS
   }
 }
 
-// ⚠️ Dynamically import the GeneratorStudio micro-frontend from Port 3001!
+// 1. Dynamically import the GeneratorStudio micro-frontend from Port 3001
 const RemoteGeneratorStudio = React.lazy(() =>
   import('mfeAudioGenerator/GeneratorStudio').catch(() => ({
     default: () => (
@@ -70,18 +80,44 @@ const RemoteGeneratorStudio = React.lazy(() =>
           textAlign: 'center',
           color: '#ff4444',
           backgroundColor: '#1a1a1a',
-          borderRadius: '8px',
-          margin: '2rem',
+          borderRadius: '12px',
+          border: '1px solid #3f1d1d',
         }}
       >
-        <h3>⚠️ Could not connect to Audio Generator Micro-Frontend</h3>
-        <p>Make sure apps/mfe-audio-generator is running on http://localhost:3001</p>
+        <h3>⚠️ Could not connect to Audio Generator MFE</h3>
+        <p style={{ color: '#a1a1aa', fontSize: '0.9rem' }}>
+          Ensure <code>apps/mfe-audio-generator</code> is running on{' '}
+          <code>http://localhost:3001</code>
+        </p>
       </div>
     ),
   }))
 );
 
-// -- Main Layout Wrapper will load AudioProvider and dynamically import remote GeneratorStudio from Port 3001 using React's Module Federation support (React.lazy and Suspense) --
+// 2. Dynamically import the RecommendationEngine micro-frontend from Port 3002
+const RemoteRecommendationEngine = React.lazy(() =>
+  import('mfeAudioRecommendations/RecommendationEngine').catch(() => ({
+    default: () => (
+      <div
+        style={{
+          padding: '2rem',
+          textAlign: 'center',
+          color: '#38bdf8',
+          backgroundColor: '#1a1a1a',
+          borderRadius: '12px',
+          border: '1px solid #1e3a5f',
+        }}
+      >
+        <h3>⚠️ Could not connect to Recommendations MFE</h3>
+        <p style={{ color: '#a1a1aa', fontSize: '0.9rem' }}>
+          Ensure <code>apps/mfe-recommendations</code> is running on{' '}
+          <code>http://localhost:3002</code>
+        </p>
+      </div>
+    ),
+  }))
+);
+
 export default function App() {
   return (
     <AudioProvider>
@@ -93,6 +129,7 @@ export default function App() {
           fontFamily: 'system-ui, sans-serif',
         }}
       >
+        {/* Top Navigation Bar */}
         <header
           style={{
             padding: '1.5rem 2rem',
@@ -127,26 +164,73 @@ export default function App() {
               color: '#a1a1aa',
             }}
           >
-            ⚡ Module Federation: Active
+            ⚡ Module Federation: Active (Ports 3001 &amp; 3002)
           </span>
         </header>
 
-        <main style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
-          <MfeErrorBoundary>
-            <Suspense
-              fallback={
-                <div style={{ textAlign: 'center', padding: '4rem', color: '#a1a1aa' }}>
-                  <h2>⏳ Loading Generator Studio Micro-Frontend...</h2>
-                  <p>Fetching remote bundle from Port 3001...</p>
-                </div>
-              }
-            >
-              <RemoteGeneratorStudio />
-            </Suspense>
-          </MfeErrorBoundary>
+        {/* Side-by-Side Responsive Micro-Frontend Grid */}
+        <main
+          style={{
+            padding: '2rem',
+            maxWidth: '1400px',
+            margin: '0 auto',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))',
+            gap: '2rem',
+            alignItems: 'start',
+          }}
+        >
+          {/* Left Column: Gemini Lyria 3 Generator Studio (Port 3001) */}
+          <section style={{ width: '100%' }}>
+            <MfeErrorBoundary mfeName="Audio Generator MFE">
+              <Suspense
+                fallback={
+                  <div
+                    style={{
+                      textAlign: 'center',
+                      padding: '4rem',
+                      color: '#a1a1aa',
+                      backgroundColor: '#141418',
+                      borderRadius: '12px',
+                      border: '1px solid #27272a',
+                    }}
+                  >
+                    <h2>⏳ Loading Generator Studio MFE...</h2>
+                    <p>Fetching remote bundle from Port 3001...</p>
+                  </div>
+                }
+              >
+                <RemoteGeneratorStudio />
+              </Suspense>
+            </MfeErrorBoundary>
+          </section>
+
+          {/* Right Column: AI Prompt Enricher & Recommendations Engine (Port 3002) */}
+          <section style={{ width: '100%' }}>
+            <MfeErrorBoundary mfeName="Recommendations MFE">
+              <Suspense
+                fallback={
+                  <div
+                    style={{
+                      textAlign: 'center',
+                      padding: '4rem',
+                      color: '#a1a1aa',
+                      backgroundColor: '#141418',
+                      borderRadius: '12px',
+                      border: '1px solid #27272a',
+                    }}
+                  >
+                    <h2>⏳ Loading Recommendations MFE...</h2>
+                    <p>Fetching remote bundle from Port 3002...</p>
+                  </div>
+                }
+              >
+                <RemoteRecommendationEngine />
+              </Suspense>
+            </MfeErrorBoundary>
+          </section>
         </main>
       </div>
     </AudioProvider>
   );
 }
-
